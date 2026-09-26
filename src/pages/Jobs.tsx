@@ -1,63 +1,122 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
-import { Drawer } from '@/components/Modal';
-import { JOB_TEMPLATES } from '@/lib/jobs';
+import { ConnectorPicker } from '@/components/ConnectorPicker';
+import { JOB_TEMPLATES, jobById } from '@/lib/jobs';
 import { useUiStore } from '@/lib/store';
-import type { JobTemplate } from '@/lib/types';
+import { sessionsApi, connectionsApi } from '@/lib/api';
+import { useToast } from '@/components/Toast';
+import type { Connector } from '@/lib/types';
 
 export default function Jobs() {
-  const [open, setOpen] = useState<JobTemplate | null>(null);
   const nav = useNavigate();
-  const { setSelectedJobId } = useUiStore();
+  const toast = useToast((s) => s.show);
+  const { draft, setDraft, selectedJobId, setSelectedJobId, selectedConnectors, repo, branch } = useUiStore();
+  const [connectors, setConnectors] = useState<Connector[]>([]);
+  const [starting, setStarting] = useState(false);
+  const [slashOpen, setSlashOpen] = useState(false);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { connectionsApi.list().then(setConnectors).catch(() => setConnectors([])); }, []);
+
+  useEffect(() => {
+    if (!slashOpen) return;
+    const onDoc = (e: MouseEvent) => { if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setSlashOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [slashOpen]);
+
+  const job = jobById(selectedJobId);
+  const slashMatch = /^\/(.*)$/.exec(draft);
+  const query = slashMatch ? slashMatch[1].toLowerCase() : '';
+  const filteredJobs = slashMatch ? JOB_TEMPLATES.filter((j) => j.name.toLowerCase().includes(query)) : [];
+
+  function onChange(v: string) {
+    setDraft(v);
+    setSlashOpen(/^\/(.*)$/.test(v));
+  }
+
+  function pickJob(id: string) {
+    setSelectedJobId(id);
+    setDraft('');
+    setSlashOpen(false);
+    taRef.current?.focus();
+  }
+
+  async function send() {
+    const goal = draft.trim();
+    if (!goal || goal === '/') { toast('Describe what you want the agent to do'); return; }
+    setStarting(true);
+    try {
+      const session = await sessionsApi.create({ goal, jobId: selectedJobId, repo, branch, connectors: selectedConnectors });
+      setDraft(''); setSelectedJobId(null);
+      nav(`/s/${session.id}`);
+    } catch {
+      toast('Backend not connected yet');
+    } finally {
+      setStarting(false);
+    }
+  }
 
   return (
     <>
       <HeaderLeft><span className="h-title">AI Agent</span></HeaderLeft>
       <HeaderRight />
-      <div className="wrap">
-        <div className="pg-h">
-          <div><h1 className="h1">AI Agent</h1><p className="sub">Ready-made job types. Each ships with a planner prompt, success criteria, required tools, approval rules and verifier checks.</p></div>
+      <div className="home">
+        <div className="hero-wrap">
+          <span className="eyebrow"><i />Autonomous coding agent</span>
+          <h1 className="hero">Talk to the <em>agent</em></h1>
+          <p className="hero-sub">Type <span className="mono">/</span> to pick a job type, or just describe the work.</p>
         </div>
-        <div className="grid g3" style={{ marginTop: 22 }}>
-          {JOB_TEMPLATES.map((j) => (
-            <button key={j.id} className="card pad" style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 10 }} onClick={() => setOpen(j)}>
-              <span className="ico-sq"><Icon name={j.icon} /></span>
-              <span><b style={{ fontWeight: 600, fontSize: 16, display: 'block' }}>{j.name}</b><span className="muted" style={{ fontSize: 14 }}>{j.description}</span></span>
-              <span className="muted" style={{ fontSize: 13, display: 'flex', gap: 6, alignItems: 'center', marginTop: 'auto' }}>
-                {j.inputLabel} <Icon name="arrow" /> {j.outputLabel}
-              </span>
-            </button>
-          ))}
+
+        <div className="composer" ref={wrapRef}>
+          {slashOpen && (
+            <div className="menu up" role="menu" style={{ position: 'absolute', left: 14, right: 14, width: 'auto' }}>
+              <div className="mh">Job types</div>
+              {filteredJobs.length === 0 && <div className="muted" style={{ padding: '9px 10px' }}>No match</div>}
+              {filteredJobs.map((j) => (
+                <button key={j.id} role="menuitem" onClick={() => pickJob(j.id)}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Icon name={j.icon} />{j.name}</span>
+                  <small>{j.inputLabel} → {j.outputLabel}</small>
+                </button>
+              ))}
+            </div>
+          )}
+          <textarea
+            ref={taRef}
+            rows={2}
+            placeholder={job ? job.placeholder : 'Message the agent, or type / for a job type'}
+            value={draft}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && slashOpen) { setSlashOpen(false); return; }
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (slashOpen && filteredJobs.length) pickJob(filteredJobs[0].id);
+                else send();
+              }
+            }}
+          />
+          <div className="bar">
+            <div className="l">
+              <button className="circle" aria-label="Attach a ZIP or files" onClick={() => toast('Attach ZIP or files')}><Icon name="plus" /></button>
+              <ConnectorPicker connectors={connectors} />
+              {job && (
+                <span className="pill tag">
+                  <Icon name={job.icon} />{job.name}
+                  <button className="x" aria-label="Remove job type" onClick={() => setSelectedJobId(null)}><Icon name="x" /></button>
+                </span>
+              )}
+            </div>
+            <div className="r">
+              <button className="mic" aria-label="Voice input" onClick={() => toast('Voice input')}><Icon name="mic" /></button>
+              <button className="send" aria-label="Send" disabled={starting} onClick={send}><Icon name="up" /></button>
+            </div>
+          </div>
         </div>
       </div>
-      {open && (
-        <Drawer onClose={() => setOpen(null)}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span className="ico-sq"><Icon name={open.icon} /></span>
-            <button className="icon-btn" aria-label="Close" onClick={() => setOpen(null)}><Icon name="x" /></button>
-          </div>
-          <h2 style={{ margin: '14px 0 4px' }}>{open.name}</h2>
-          <p className="muted" style={{ margin: 0 }}>{open.description}</p>
-          <h4>Input and output</h4>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span className="badge">{open.inputLabel}</span><Icon name="arrow" /><span className="badge ok">{open.outputLabel}</span>
-          </div>
-          <h4>Success criteria</h4>
-          <ul>{open.criteria.map((c) => <li key={c}>{c}</li>)}</ul>
-          <h4>Required tools</h4>
-          <div className="chips">{open.tools.map((t) => <span className="badge" key={t}>{t}</span>)}</div>
-          <h4>Asks for approval before</h4>
-          {open.approvals.length ? <ul>{open.approvals.map((a) => <li key={a}>{a}</li>)}</ul> : <span className="muted">None required</span>}
-          <h4>Verifier checks</h4>
-          <ul>{open.checks.map((c) => <li key={c}>{c}</li>)}</ul>
-          <div style={{ display: 'flex', gap: 8, marginTop: 26 }}>
-            <button className="btn pri" onClick={() => { setSelectedJobId(open.id); setOpen(null); nav('/'); }}>Start this job</button>
-            <button className="btn" onClick={() => setOpen(null)}>Close</button>
-          </div>
-        </Drawer>
-      )}
     </>
   );
 }
