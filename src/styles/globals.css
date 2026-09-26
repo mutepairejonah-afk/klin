@@ -117,6 +117,11 @@ tr[data-go]:hover td { background: var(--hover); cursor: pointer; }
 .switch input:checked + span { background: var(--green); border-color: transparent; }
 .switch input:checked + span::after { transform: translateX(16px); background: #fff; }
 .row-item { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--bubble); border: 1px solid var(--card-line); }
+.seg button { display: flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: 9px; border: 0; background: transparent; color: var(--text-2); font-size: 14px; font-weight: 500; cursor: pointer; }
+.seg button:hover { color: var(--text); }
+.seg button.active { background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+.seg button svg { width: 16px; height: 16px; }
 .row-item:last-child { border-bottom: 0; }
 .row-item .txt { flex: 1; min-width: 0; }
 .row-item .txt small { display: block; color: var(--text-3); font-size: 13.5px; }

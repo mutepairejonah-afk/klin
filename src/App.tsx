@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Shell from '@/components/Shell';
 import { Toast } from '@/components/Toast';
+import { useUiStore } from '@/lib/store';
 import { SessionView } from '@/pages/SessionView';
 import Home from '@/pages/Home';
 import Sessions from '@/pages/Sessions';
@@ -16,6 +18,17 @@ import Share from '@/pages/Share';
 import NotFound from '@/pages/NotFound';
 
 export default function App() {
+  const theme = useUiStore((s) => s.theme);
+
+  // Applies the chosen theme to <html data-theme="...">. 'system' removes
+  // the attribute entirely so the CSS's prefers-color-scheme media query
+  // decides instead (see globals.css).
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'system') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', theme);
+  }, [theme]);
+
   return (
     <>
       <Routes>

@@ -5,6 +5,7 @@ import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { settingsApi, membersApi, secretsApi, type UserSettings } from '@/lib/api';
+import { useUiStore } from '@/lib/store';
 import type { Member, Secret } from '@/lib/types';
 
 const ALWAYS_ON_RULES = [
@@ -14,6 +15,8 @@ const TOGGLEABLE_RULES = ['Using a secret', 'Spending money (Stripe, cloud APIs)
 
 export default function Settings() {
   const toast = useToast((s) => s.show);
+  const theme = useUiStore((s) => s.theme);
+  const setTheme = useUiStore((s) => s.setTheme);
   const [s, setS] = useState<UserSettings | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [secrets, setSecrets] = useState<Secret[]>([]);
@@ -48,6 +51,25 @@ export default function Settings() {
         <p className="sub">Defaults for every session. You can override them per job.</p>
 
         <div className="card pad" style={{ marginTop: 22 }}>
+          <h3>Appearance</h3>
+          <p className="muted" style={{ margin: '0 0 12px', fontSize: 14 }}>Choose a theme, or follow your system setting.</p>
+          <div className="seg" role="radiogroup" aria-label="Theme">
+            {(['system', 'light', 'dark'] as const).map((t) => (
+              <button
+                key={t}
+                role="radio"
+                aria-checked={theme === t}
+                className={theme === t ? 'active' : ''}
+                onClick={() => setTheme(t)}
+              >
+                <Icon name={t === 'light' ? 'sun' : t === 'dark' ? 'moon' : 'monitor'} />
+                {t === 'system' ? 'System' : t === 'light' ? 'Light' : 'Dark'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="card pad" style={{ marginTop: 14 }}>
           <h3>Profile</h3>
           <div style={{ display: 'flex', gap: 24, marginTop: 12 }}>
             <div className="field" style={{ flex: 1 }}><label>Name</label><input className="input w" placeholder="Your name" defaultValue={s?.name} onBlur={(e) => save({ name: e.target.value })} /></div>
