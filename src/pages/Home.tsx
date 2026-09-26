@@ -3,9 +3,8 @@ import { useRef, useState } from 'react';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { ConnectorPicker } from '@/components/ConnectorPicker';
-import { JobCard } from '@/components/JobCard';
 import { useUiStore } from '@/lib/store';
-import { JOB_TEMPLATES, jobById } from '@/lib/jobs';
+import { jobById } from '@/lib/jobs';
 import { useSessions } from '@/hooks/useSessions';
 import { sessionsApi, connectionsApi } from '@/lib/api';
 import { useToast } from '@/components/Toast';
@@ -88,13 +87,6 @@ export default function Home() {
               <button className="send" aria-label="Start task" disabled={starting} onClick={start}><Icon name="up" /></button>
             </div>
           </div>
-        </div>
-
-        <div className="jobgrid">
-          {JOB_TEMPLATES.slice(0, 6).map((j) => <JobCard key={j.id} job={j} onClick={() => { setSelectedJobId(j.id); taRef.current?.focus(); }} />)}
-        </div>
-        <div style={{ textAlign: 'center', marginTop: 12 }}>
-          <a className="muted" href="/jobs" onClick={(e) => { e.preventDefault(); nav('/jobs'); }}>All {JOB_TEMPLATES.length} job types →</a>
         </div>
 
         {working.length > 0 && (

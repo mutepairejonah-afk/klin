@@ -14,11 +14,11 @@ export default function Jobs() {
 
   return (
     <>
-      <HeaderLeft><span className="h-title">Jobs</span></HeaderLeft>
+      <HeaderLeft><span className="h-title">AI Agent</span></HeaderLeft>
       <HeaderRight />
       <div className="wrap">
         <div className="pg-h">
-          <div><h1 className="h1">Jobs</h1><p className="sub">Ready-made job types. Each ships with a planner prompt, success criteria, required tools, approval rules and verifier checks.</p></div>
+          <div><h1 className="h1">AI Agent</h1><p className="sub">Ready-made job types. Each ships with a planner prompt, success criteria, required tools, approval rules and verifier checks.</p></div>
         </div>
         <div className="grid g3" style={{ marginTop: 22 }}>
           {JOB_TEMPLATES.map((j) => (

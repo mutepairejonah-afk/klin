@@ -9,11 +9,10 @@ import { useToast } from './Toast';
 import { authApi } from '@/lib/api';
 
 const NAV_WORK = [
-  { to: '/', label: 'New task', icon: 'edit', end: true },
+  { to: '/', label: 'New Chat', icon: 'edit', end: true },
   { to: '/sessions', label: 'Sessions', icon: 'agent' },
-  { to: '/jobs', label: 'Jobs', icon: 'skills' },
+  { to: '/jobs', label: 'AI Agent', icon: 'skills' },
   { to: '/scheduled', label: 'Scheduled', icon: 'clock' },
-  { to: '/library', label: 'Library', icon: 'library' },
 ];
 const NAV_SETUP = [
   { to: '/connections', label: 'Connectors', icon: 'plugins' },

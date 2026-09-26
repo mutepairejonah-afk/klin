@@ -7,7 +7,6 @@ import Sessions from '@/pages/Sessions';
 import Jobs from '@/pages/Jobs';
 import Connections from '@/pages/Connections';
 import Scheduled from '@/pages/Scheduled';
-import Library from '@/pages/Library';
 import Usage from '@/pages/Usage';
 import Audit from '@/pages/Audit';
 import Settings from '@/pages/Settings';
@@ -31,7 +30,6 @@ export default function App() {
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/connections" element={<Connections />} />
           <Route path="/scheduled" element={<Scheduled />} />
-          <Route path="/library" element={<Library />} />
           <Route path="/usage" element={<Usage />} />
           <Route path="/audit" element={<Audit />} />
           <Route path="/settings" element={<Settings />} />
