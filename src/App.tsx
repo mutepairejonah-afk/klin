@@ -4,7 +4,7 @@ import { Toast } from '@/components/Toast';
 import { SessionView } from '@/pages/SessionView';
 import Home from '@/pages/Home';
 import Sessions from '@/pages/Sessions';
-import Jobs from '@/pages/Jobs';
+import AiAgent from '@/pages/AiAgent';
 import Connections from '@/pages/Connections';
 import Scheduled from '@/pages/Scheduled';
 import Usage from '@/pages/Usage';
@@ -27,7 +27,7 @@ export default function App() {
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/s/:id" element={<SessionView mode="live" />} />
           <Route path="/s/:id/replay" element={<SessionView mode="replay" />} />
-          <Route path="/jobs" element={<Jobs />} />
+          <Route path="/agent" element={<AiAgent />} />
           <Route path="/connections" element={<Connections />} />
           <Route path="/scheduled" element={<Scheduled />} />
           <Route path="/usage" element={<Usage />} />

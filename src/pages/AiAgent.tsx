@@ -9,7 +9,7 @@ import { sessionsApi, connectionsApi } from '@/lib/api';
 import { useToast } from '@/components/Toast';
 import type { Connector } from '@/lib/types';
 
-export default function Jobs() {
+export default function AiAgent() {
   const nav = useNavigate();
   const toast = useToast((s) => s.show);
   const { draft, setDraft, selectedJobId, setSelectedJobId, selectedConnectors, repo, branch } = useUiStore();
