@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
+import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/Toast';
-import { settingsApi, membersApi, type UserSettings } from '@/lib/api';
-import type { Member } from '@/lib/types';
+import { settingsApi, membersApi, secretsApi, type UserSettings } from '@/lib/api';
+import type { Member, Secret } from '@/lib/types';
 
 const ALWAYS_ON_RULES = [
   'git push --force', 'rm -rf, DROP, TRUNCATE, DELETE without WHERE', 'ALTER TABLE … DROP', 'Production deploys',
@@ -15,11 +16,24 @@ export default function Settings() {
   const toast = useToast((s) => s.show);
   const [s, setS] = useState<UserSettings | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [secrets, setSecrets] = useState<Secret[]>([]);
+  const [addSecretOpen, setAddSecretOpen] = useState(false);
+
+  function refreshSecrets() {
+    secretsApi.list().then(setSecrets).catch(() => setSecrets([]));
+  }
 
   useEffect(() => {
     settingsApi.get().then(setS).catch(() => setS(null));
     membersApi.list().then(setMembers).catch(() => setMembers([]));
+    refreshSecrets();
   }, []);
+
+  function removeSecret(id: string) {
+    secretsApi.remove(id)
+      .then(() => setSecrets((list) => list.filter((sec) => sec.id !== id)))
+      .catch(() => toast('Backend not connected yet'));
+  }
 
   function save(patch: Partial<UserSettings>) {
     settingsApi.update(patch).then(setS).catch(() => toast('Backend not connected yet'));
@@ -103,9 +117,57 @@ export default function Settings() {
         </div>
 
         <div className="card" style={{ marginTop: 14 }}>
+          <div style={{ padding: '18px 20px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ margin: 0 }}>Secrets</h3>
+              <p className="muted" style={{ margin: '2px 0 0', fontSize: 14 }}>Handle-only — values are encrypted and never shown again.</p>
+            </div>
+            <button className="btn sm" onClick={() => setAddSecretOpen(true)}><Icon name="plus" />Add secret</button>
+          </div>
+          {secrets.length === 0
+            ? <div className="muted" style={{ padding: '14px 20px' }}>No secrets yet. The agent refers to a secret by its handle — the value is injected at command time and never enters the model's context.</div>
+            : secrets.map((sec) => (
+              <div className="row-item" key={sec.id}>
+                <Icon name="lock" />
+                <div className="txt"><b className="mono" style={{ fontWeight: 500 }}>{sec.handle}</b><small>Scope: {sec.scope}{sec.lastUsedAt ? ` · last used ${new Date(sec.lastUsedAt).toLocaleDateString()}` : ''}</small></div>
+                <button className="icon-btn" aria-label={`Remove ${sec.handle}`} onClick={() => removeSecret(sec.id)}><Icon name="trash" /></button>
+              </div>
+            ))}
+        </div>
+
+        <div className="card" style={{ marginTop: 14 }}>
           <Link className="row-item" to="/usage"><Icon name="chart" /><div className="txt"><b style={{ fontWeight: 500 }}>Usage and credits</b><small>Cost per session and your success targets</small></div><Icon name="chevr" /></Link>
           <Link className="row-item" to="/audit"><Icon name="shield" /><div className="txt"><b style={{ fontWeight: 500 }}>Audit log</b><small>Every external write and approval</small></div><Icon name="chevr" /></Link>
         </div>
+      </div>
+
+      {addSecretOpen && (
+        <Modal onClose={() => setAddSecretOpen(false)}>
+          <AddSecretForm onDone={() => { setAddSecretOpen(false); refreshSecrets(); }} onClose={() => setAddSecretOpen(false)} />
+        </Modal>
+      )}
+    </>
+  );
+}
+
+function AddSecretForm({ onDone, onClose }: { onDone: () => void; onClose: () => void }) {
+  const toast = useToast((s) => s.show);
+  const [handle, setHandle] = useState('');
+  const [value, setValue] = useState('');
+  const [scope, setScope] = useState('All repos');
+  return (
+    <>
+      <h2>Add a secret</h2>
+      <p className="s">The agent refers to it by handle. The value is injected into the sandbox when a command runs and never enters the model's context.</p>
+      <div className="field"><label>Handle</label><input className="input w mono" placeholder="SECRET_HANDLE" value={handle} onChange={(e) => setHandle(e.target.value.toUpperCase().replace(/\s+/g, '_'))} /></div>
+      <div className="field"><label>Value</label><input className="input w" type="password" placeholder="Paste the value" value={value} onChange={(e) => setValue(e.target.value)} /></div>
+      <div className="field"><label>Scope</label><select className="input" value={scope} onChange={(e) => setScope(e.target.value)}><option>All repos</option></select></div>
+      <div className="foot">
+        <button className="btn" onClick={onClose}>Cancel</button>
+        <button className="btn pri" onClick={() => {
+          if (!handle) { toast('Enter a handle'); return; }
+          secretsApi.create(handle, value, scope).then(onDone).catch(() => toast('Backend not connected yet'));
+        }}>Save secret</button>
       </div>
     </>
   );

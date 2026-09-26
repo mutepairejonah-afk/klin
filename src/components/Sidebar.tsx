@@ -16,7 +16,7 @@ const NAV_WORK = [
   { to: '/library', label: 'Library', icon: 'library' },
 ];
 const NAV_SETUP = [
-  { to: '/connections', label: 'Connections', icon: 'plugins' },
+  { to: '/connections', label: 'Connectors', icon: 'plugins' },
   { to: '/memory', label: 'Memory', icon: 'layers' },
   { to: '/settings', label: 'Settings', icon: 'settings' },
 ];
