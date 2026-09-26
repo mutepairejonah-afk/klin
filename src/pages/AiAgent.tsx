@@ -73,7 +73,7 @@ export default function AiAgent() {
 
         <div className="composer" ref={wrapRef}>
           {slashOpen && (
-            <div className="menu up" role="menu" style={{ position: 'absolute', left: 14, right: 14, width: 'auto' }}>
+            <div className="menu up slash-menu" role="menu" style={{ position: 'absolute', left: 14, right: 14 }}>
               <div className="mh">Job types</div>
               {filteredJobs.length === 0 && <div className="muted" style={{ padding: '9px 10px' }}>No match</div>}
               {filteredJobs.map((j) => (
