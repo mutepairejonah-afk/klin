@@ -8,6 +8,7 @@ import { jobById } from '@/lib/jobs';
 import { useSessions } from '@/hooks/useSessions';
 import { sessionsApi, connectionsApi } from '@/lib/api';
 import { useToast } from '@/components/Toast';
+import { RecentSessionsSkeleton } from '@/components/Skeleton';
 import type { Connector } from '@/lib/types';
 import { useEffect } from 'react';
 
@@ -15,7 +16,7 @@ export default function Home() {
   const nav = useNavigate();
   const toast = useToast((s) => s.show);
   const { draft, setDraft, selectedJobId, setSelectedJobId, selectedConnectors, repo, branch, setRepo, setBranch } = useUiStore();
-  const { sessions } = useSessions();
+  const { sessions, loading } = useSessions();
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [starting, setStarting] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -106,15 +107,17 @@ export default function Home() {
 
         <section className="recent">
           <h3><span>Recent sessions</span><a href="/sessions" className="muted" onClick={(e) => { e.preventDefault(); nav('/sessions'); }}>View all</a></h3>
-          <div className="card">
-            {recent.length === 0 && <div className="muted" style={{ padding: '16px 18px' }}>No sessions yet</div>}
-            {recent.map((s) => (
-              <a key={s.id} className="rcard" href={`/s/${s.id}`} onClick={(e) => { e.preventDefault(); nav(`/s/${s.id}`); }}>
-                <span className="task-ic"><Icon name="agent" /></span>
-                <span className="txt"><b>{s.goal}</b><small>{s.repo || '—'} · {jobById(s.jobId)?.name ?? 'Job'} · {s.status}</small></span>
-              </a>
-            ))}
-          </div>
+          {loading ? <RecentSessionsSkeleton /> : (
+            <div className="card">
+              {recent.length === 0 && <div className="muted" style={{ padding: '16px 18px' }}>No sessions yet</div>}
+              {recent.map((s) => (
+                <a key={s.id} className="rcard" href={`/s/${s.id}`} onClick={(e) => { e.preventDefault(); nav(`/s/${s.id}`); }}>
+                  <span className="task-ic"><Icon name="agent" /></span>
+                  <span className="txt"><b>{s.goal}</b><small>{s.repo || '—'} · {jobById(s.jobId)?.name ?? 'Job'} · {s.status}</small></span>
+                </a>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </>

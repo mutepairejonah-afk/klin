@@ -2,6 +2,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import Icon from '@/components/Icon';
 import { EmptyState } from '@/components/EmptyState';
+import { SessionRowsSkeleton } from '@/components/Skeleton';
 import { useSessions } from '@/hooks/useSessions';
 import { jobById } from '@/lib/jobs';
 import type { SessionStatus } from '@/lib/types';
@@ -23,7 +24,7 @@ export default function Sessions() {
   return (
     <>
       <HeaderLeft><span className="h-title">Sessions</span></HeaderLeft>
-      <HeaderRight><Link className="btn pri hide-sm" to="/"><Icon name="plus" />New task</Link></HeaderRight>
+      <HeaderRight><Link className="btn pri hide-sm" to="/"><Icon name="plus" />New Chat</Link></HeaderRight>
       <div className="wrap">
         <div className="pg-h">
           <div><h1 className="h1">Sessions</h1><p className="sub">Every job the agent has run. Open one to watch it live or replay it.</p></div>
@@ -35,12 +36,13 @@ export default function Sessions() {
             </button>
           ))}
         </div>
+        {loading && <SessionRowsSkeleton />}
         {!loading && sessions.length === 0 && (
           <EmptyState icon="agent" title="No sessions here yet">Start a task and it will show up in this list.
-            <div style={{ marginTop: 14 }}><Link className="btn pri" to="/">New task</Link></div>
+            <div style={{ marginTop: 14 }}><Link className="btn pri" to="/">New Chat</Link></div>
           </EmptyState>
         )}
-        {sessions.length > 0 && (
+        {!loading && sessions.length > 0 && (
           <div className="table-wrap">
             <table>
               <thead><tr><th>Task</th><th>Repository</th><th>Job</th><th>Status</th><th>Duration</th><th>Cost</th></tr></thead>

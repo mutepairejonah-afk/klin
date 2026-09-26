@@ -11,7 +11,7 @@ export default function NotFound() {
         <div className="card empty">
           <div className="ico-sq"><Icon name="search" /></div>
           <b>This page doesn’t exist</b>Check the address or go back to a task.
-          <div style={{ marginTop: 14 }}><Link className="btn pri" to="/">New task</Link></div>
+          <div style={{ marginTop: 14 }}><Link className="btn pri" to="/">New Chat</Link></div>
         </div>
       </div>
     </>
