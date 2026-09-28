@@ -16,6 +16,8 @@ interface UiState {
   setDraft: (v: string) => void;
   selectedJobId: string | null;
   setSelectedJobId: (id: string | null) => void;
+  selectedAgent: string | null;
+  setSelectedAgent: (slug: string | null) => void;
   selectedConnectors: string[];
   toggleConnector: (id: string) => void;
   removeConnector: (id: string) => void;
@@ -39,6 +41,8 @@ export const useUiStore = create<UiState>()(
       setDraft: (draft) => set({ draft }),
       selectedJobId: null,
       setSelectedJobId: (selectedJobId) => set({ selectedJobId }),
+      selectedAgent: null,
+      setSelectedAgent: (selectedAgent) => set({ selectedAgent }),
       selectedConnectors: [],
       toggleConnector: (id) => {
         const cur = get().selectedConnectors;

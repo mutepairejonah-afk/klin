@@ -35,6 +35,7 @@ export interface CreateSessionInput {
   repo?: string;
   branch?: string;
   connectors?: string[];
+  agent?: { slug: string; name: string; systemPrompt: string };
 }
 export const sessionsApi = {
   list: (filter?: { status?: SessionStatus; repo?: string }) =>
