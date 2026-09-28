@@ -45,13 +45,23 @@ export function installLinkPreviewGuard() {
     const a = closestAnchor(e.target, `a[${REAL_HREF}]`);
     if (a) restore(a);
   });
-  // Capture phase so the href is back in place before any click/navigation handler runs.
+  // Capture phase so the href is back in place before any handler runs — but ONLY
+  // for interactions that actually need it (middle/right click, or a modifier key
+  // for open-in-new-tab/window). A plain left click is handled by the router's
+  // onClick and doesn't need an href, and restoring it there is exactly what made
+  // the URL pop up at the bottom of the window after clicking Settings etc.
   document.addEventListener('mousedown', (e) => {
     const a = closestAnchor(e.target, `a[${REAL_HREF}]`);
-    if (a) restore(a);
+    if (!a) return;
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) restore(a);
   }, true);
+  // Keyboard focus (Tab) restores the href for screen readers; focus caused by a
+  // mouse click (not :focus-visible) leaves it blanked so no URL is shown.
   document.addEventListener('focusin', (e) => {
     const a = closestAnchor(e.target, `a[${REAL_HREF}]`);
-    if (a) restore(a);
+    if (!a) return;
+    let keyboard = false;
+    try { keyboard = a.matches(':focus-visible'); } catch { keyboard = true; }
+    if (keyboard) restore(a);
   });
 }
