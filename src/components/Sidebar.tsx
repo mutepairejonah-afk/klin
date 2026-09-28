@@ -7,6 +7,7 @@ import { useSessions } from '@/hooks/useSessions';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from './Toast';
 import { authApi } from '@/lib/api';
+import { SidebarSessionsSkeleton } from './Skeleton';
 
 const NAV_WORK = [
   { to: '/', label: 'New Chat', icon: 'edit', end: true },
@@ -22,7 +23,7 @@ const NAV_SETUP = [
 
 export default function Sidebar() {
   const { mobileSidebarOpen, setMobileSidebarOpen, toggleSidebar } = useUiStore();
-  const { sessions } = useSessions();
+  const { sessions, loading } = useSessions();
   const { user } = useAuth();
   const waiting = sessions.filter((s) => s.status === 'waiting_approval').length;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -74,8 +75,9 @@ export default function Sidebar() {
 
           <div className="sec"><span>Sessions</span><NavLink to="/sessions" className="icon-btn" aria-label="All sessions"><Icon name="filter" /></NavLink></div>
           <div className="list">
-            {sessions.length === 0 && <div className="muted" style={{ padding: '6px 10px', fontSize: 14 }}>No tasks yet</div>}
-            {sessions.slice(0, 6).map((s) => (
+            {loading && <SidebarSessionsSkeleton />}
+            {!loading && sessions.length === 0 && <div className="muted" style={{ padding: '6px 10px', fontSize: 14 }}>No tasks yet</div>}
+            {!loading && sessions.slice(0, 6).map((s) => (
               <NavLink key={s.id} to={`/s/${s.id}`} className={activeSessionId === s.id ? 'on' : ''}>
                 <span className="task-ic"><Icon name="agent" /></span>
                 <span className="t">{s.goal}</span>

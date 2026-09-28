@@ -5,6 +5,7 @@ import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { useToast } from '@/components/Toast';
 import { CONNECTOR_CATALOG } from '@/lib/connectorCatalog';
 import { connectionsApi } from '@/lib/api';
+import { Skeleton } from '@/components/Skeleton';
 import type { Connector } from '@/lib/types';
 
 const TABS = [
@@ -28,9 +29,10 @@ export default function Connections() {
   const tab = params.get('tab') || 'integrations';
   const toast = useToast((s) => s.show);
   const [connectors, setConnectors] = useState<Connector[]>([]);
+  const [loading, setLoading] = useState(true);
 
   function refresh() {
-    connectionsApi.list().then(setConnectors).catch(() => setConnectors([]));
+    connectionsApi.list().then(setConnectors).catch(() => setConnectors([])).finally(() => setLoading(false));
   }
   useEffect(refresh, []);
 
@@ -69,11 +71,12 @@ export default function Connections() {
                   </div>
                   <button
                     className={`btn sm ${connected ? '' : 'pri'}`}
+                    disabled={loading}
                     onClick={() => (connected
                       ? connectionsApi.disconnect(c.id).then(refresh).catch(() => toast('Backend not connected yet'))
                       : connectionsApi.connect(c.id).then(refresh).catch(() => toast('Backend not connected yet')))}
                   >
-                    {connected ? 'Manage' : 'Connect'}
+                    {loading ? <Skeleton width={50} height={12} style={{ display: 'inline-block' }} /> : connected ? 'Manage' : 'Connect'}
                   </button>
                 </div>
               );

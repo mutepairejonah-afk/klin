@@ -6,6 +6,7 @@ import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { settingsApi, membersApi, secretsApi, type UserSettings } from '@/lib/api';
 import { useUiStore } from '@/lib/store';
+import { RowItemsSkeleton } from '@/components/Skeleton';
 import type { Member, Secret } from '@/lib/types';
 
 const ALWAYS_ON_RULES = [
@@ -20,15 +21,17 @@ export default function Settings() {
   const [s, setS] = useState<UserSettings | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [secrets, setSecrets] = useState<Secret[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [secretsLoading, setSecretsLoading] = useState(true);
   const [addSecretOpen, setAddSecretOpen] = useState(false);
 
   function refreshSecrets() {
-    secretsApi.list().then(setSecrets).catch(() => setSecrets([]));
+    secretsApi.list().then(setSecrets).catch(() => setSecrets([])).finally(() => setSecretsLoading(false));
   }
 
   useEffect(() => {
     settingsApi.get().then(setS).catch(() => setS(null));
-    membersApi.list().then(setMembers).catch(() => setMembers([]));
+    membersApi.list().then(setMembers).catch(() => setMembers([])).finally(() => setMembersLoading(false));
     refreshSecrets();
   }, []);
 
@@ -124,7 +127,8 @@ export default function Settings() {
               <Icon name="plus" />Invite
             </button>
           </div>
-          {members.length === 0
+          {membersLoading && <RowItemsSkeleton rows={2} square={false} />}
+          {!membersLoading && (members.length === 0
             ? <div className="muted" style={{ padding: '14px 20px' }}>No members yet.</div>
             : members.map((m) => (
               <div className="row-item" key={m.id}>
@@ -135,7 +139,7 @@ export default function Settings() {
                   <option value="owner">Owner</option><option value="operator">Operator</option><option value="viewer">Viewer</option>
                 </select>
               </div>
-            ))}
+            )))}
         </div>
 
         <div className="card" style={{ marginTop: 14 }}>
@@ -146,7 +150,8 @@ export default function Settings() {
             </div>
             <button className="btn sm" onClick={() => setAddSecretOpen(true)}><Icon name="plus" />Add secret</button>
           </div>
-          {secrets.length === 0
+          {secretsLoading && <RowItemsSkeleton rows={2} square={false} />}
+          {!secretsLoading && (secrets.length === 0
             ? <div className="muted" style={{ padding: '14px 20px' }}>No secrets yet. The agent refers to a secret by its handle — the value is injected at command time and never enters the model's context.</div>
             : secrets.map((sec) => (
               <div className="row-item" key={sec.id}>
@@ -154,7 +159,7 @@ export default function Settings() {
                 <div className="txt"><b className="mono" style={{ fontWeight: 500 }}>{sec.handle}</b><small>Scope: {sec.scope}{sec.lastUsedAt ? ` · last used ${new Date(sec.lastUsedAt).toLocaleDateString()}` : ''}</small></div>
                 <button className="icon-btn" aria-label={`Remove ${sec.handle}`} onClick={() => removeSecret(sec.id)}><Icon name="trash" /></button>
               </div>
-            ))}
+            )))}
         </div>
 
         <div className="card" style={{ marginTop: 14 }}>

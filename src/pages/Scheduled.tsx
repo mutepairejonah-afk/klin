@@ -5,15 +5,17 @@ import { Modal } from '@/components/Modal';
 import { EmptyState } from '@/components/EmptyState';
 import { useToast } from '@/components/Toast';
 import { schedulesApi } from '@/lib/api';
+import { RowItemsSkeleton } from '@/components/Skeleton';
 import { JOB_TEMPLATES, jobById } from '@/lib/jobs';
 import type { Schedule } from '@/lib/types';
 
 export default function Scheduled() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const toast = useToast((s) => s.show);
 
-  function refresh() { schedulesApi.list().then(setSchedules).catch(() => setSchedules([])); }
+  function refresh() { schedulesApi.list().then(setSchedules).catch(() => setSchedules([])).finally(() => setLoading(false)); }
   useEffect(refresh, []);
 
   return (
@@ -22,10 +24,11 @@ export default function Scheduled() {
       <HeaderRight><button className="btn pri" onClick={() => setOpen(true)}><Icon name="plus" />New schedule</button></HeaderRight>
       <div className="wrap">
         <div className="pg-h"><div><h1 className="h1">Scheduled</h1><p className="sub">Recurring jobs. Each run starts a fresh session.</p></div></div>
-        {schedules.length === 0
+        {loading && <div className="card" style={{ marginTop: 22 }}><RowItemsSkeleton rows={3} /></div>}
+        {!loading && schedules.length === 0
           ? <div style={{ marginTop: 22 }}><EmptyState icon="clock" title="No schedules yet">Set a job to repeat on its own.
               <div style={{ marginTop: 14 }}><button className="btn pri" onClick={() => setOpen(true)}>New schedule</button></div></EmptyState></div>
-          : (
+          : !loading && (
             <div className="card" style={{ marginTop: 22 }}>
               {schedules.map((s) => (
                 <div className="row-item" key={s.id}>

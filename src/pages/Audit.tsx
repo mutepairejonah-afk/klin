@@ -3,20 +3,30 @@ import { Link } from 'react-router-dom';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { auditApi } from '@/lib/api';
+import { TableRowsSkeleton } from '@/components/Skeleton';
 import type { AuditEntry } from '@/lib/types';
 
 export default function Audit() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
-  useEffect(() => { auditApi.list().then(setEntries).catch(() => setEntries([])); }, []);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { auditApi.list().then(setEntries).catch(() => setEntries([])).finally(() => setLoading(false)); }, []);
   return (
     <>
       <HeaderLeft><span className="h-title">Audit log</span></HeaderLeft>
       <HeaderRight />
       <div className="wrap">
         <div className="pg-h"><div><h1 className="h1">Audit log</h1><p className="sub">Every external write (GitHub, database, deploy) and every approval, in a signed, append-only chain.</p></div></div>
-        {entries.length === 0
+        {loading && (
+          <div className="table-wrap" style={{ marginTop: 22 }}>
+            <table>
+              <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Session</th><th>Detail</th><th>IP</th></tr></thead>
+              <tbody><TableRowsSkeleton cols={6} /></tbody>
+            </table>
+          </div>
+        )}
+        {!loading && entries.length === 0
           ? <div className="card empty" style={{ marginTop: 22 }}><div className="ico-sq"><Icon name="shield" /></div><b>No entries yet</b>External writes and approvals will be recorded here.</div>
-          : (
+          : !loading && (
             <div className="table-wrap" style={{ marginTop: 22 }}>
               <table>
                 <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Session</th><th>Detail</th><th>IP</th></tr></thead>

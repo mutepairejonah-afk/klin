@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { usageApi } from '@/lib/api';
+import { KpisSkeleton } from '@/components/Skeleton';
 import type { UsageSummary } from '@/lib/types';
 
 function Kpi({ label, value, target }: { label: string; value: string; target: string }) {
@@ -10,7 +11,8 @@ function Kpi({ label, value, target }: { label: string; value: string; target: s
 
 export default function Usage() {
   const [u, setU] = useState<UsageSummary | null>(null);
-  useEffect(() => { usageApi.get().then(setU).catch(() => setU(null)); }, []);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { usageApi.get().then(setU).catch(() => setU(null)).finally(() => setLoading(false)); }, []);
   const pct = (n?: number) => (n != null ? `${Math.round(n * 100)}%` : '—');
   return (
     <>
@@ -24,12 +26,16 @@ export default function Usage() {
             <div className="muted" style={{ fontSize: 14 }}>Credits and spend appear here once the agent has run a job.</div></div>
         </div>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(min(200px,100%),1fr))' }}>
-          <Kpi label="Job completion rate" value={pct(u?.jobCompletionRate)} target="Target above 70%" />
-          <Kpi label="PR merge rate" value={pct(u?.prMergeRate)} target="Target above 50%" />
-          <Kpi label="Median session time" value={u?.medianSessionSec ? `${Math.round(u.medianSessionSec / 60)} min` : '—'} target="Target under 20 min" />
-          <Kpi label="Approval prompt rate" value={pct(u?.approvalPromptRate)} target="Target under 20%" />
-          <Kpi label="Cost per successful job" value={u?.costPerJobUsd != null ? `$${u.costPerJobUsd.toFixed(2)}` : '—'} target="Target under $2" />
-          <Kpi label="Secret leaks" value={u?.secretLeaks != null ? String(u.secretLeaks) : '—'} target="Target zero" />
+          {loading ? <KpisSkeleton count={6} /> : (
+            <>
+              <Kpi label="Job completion rate" value={pct(u?.jobCompletionRate)} target="Target above 70%" />
+              <Kpi label="PR merge rate" value={pct(u?.prMergeRate)} target="Target above 50%" />
+              <Kpi label="Median session time" value={u?.medianSessionSec ? `${Math.round(u.medianSessionSec / 60)} min` : '—'} target="Target under 20 min" />
+              <Kpi label="Approval prompt rate" value={pct(u?.approvalPromptRate)} target="Target under 20%" />
+              <Kpi label="Cost per successful job" value={u?.costPerJobUsd != null ? `$${u.costPerJobUsd.toFixed(2)}` : '—'} target="Target under $2" />
+              <Kpi label="Secret leaks" value={u?.secretLeaks != null ? String(u.secretLeaks) : '—'} target="Target zero" />
+            </>
+          )}
         </div>
         <h3 style={{ margin: '26px 0 10px', fontSize: 16 }}>Most expensive sessions</h3>
         <div className="card empty">{u?.topSessions?.length ? null : 'No sessions yet'}</div>

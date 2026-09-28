@@ -7,6 +7,7 @@ import { BRAND } from '@/lib/brand';
 import { shareApi } from '@/lib/api';
 import { useSessionEvents } from '@/hooks/useSessionEvents';
 import { statusFromFold } from '@/lib/sessionReducer';
+import { SessionViewSkeleton } from '@/components/Skeleton';
 import type { Session } from '@/lib/types';
 
 export default function Share() {
@@ -32,7 +33,7 @@ export default function Share() {
       </div>
     );
   }
-  if (!meta) return null;
+  if (!meta) return <SessionViewSkeleton />;
   const status = statusFromFold(state, meta.status);
 
   return (

@@ -10,6 +10,7 @@ import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { useSessionEvents } from '@/hooks/useSessionEvents';
 import { sessionsApi, connectionsApi } from '@/lib/api';
+import { SessionViewSkeleton } from '@/components/Skeleton';
 import { statusFromFold, type FoldedState } from '@/lib/sessionReducer';
 import { fmtDuration } from '@/lib/format';
 import type { Session, Connector } from '@/lib/types';
@@ -63,7 +64,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
       </div>
     );
   }
-  if (!meta) return null;
+  if (!meta) return <SessionViewSkeleton />;
 
   return (
     <div className={`sess ${showCompMobile ? 'show-comp' : ''}`}>
