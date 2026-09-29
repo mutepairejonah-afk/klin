@@ -6,7 +6,7 @@ import { useUiStore } from '@/lib/store';
 import { useSessions } from '@/hooks/useSessions';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from './Toast';
-import { authApi } from '@/lib/api';
+import { useClerk } from '@clerk/clerk-react';
 import { SidebarSessionsSkeleton } from './Skeleton';
 
 const NAV_WORK = [
@@ -25,6 +25,7 @@ export default function Sidebar() {
   const { mobileSidebarOpen, setMobileSidebarOpen, toggleSidebar } = useUiStore();
   const { sessions, loading } = useSessions();
   const { user } = useAuth();
+  const { signOut } = useClerk();
   const waiting = sessions.filter((s) => s.status === 'waiting_approval').length;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -106,7 +107,7 @@ export default function Sidebar() {
               <NavLink to="/usage" onClick={() => setMenuOpen(false)}><Icon name="chart" />Usage and credits</NavLink>
               <NavLink to="/audit" onClick={() => setMenuOpen(false)}><Icon name="shield" />Audit log</NavLink>
               <hr style={{ border: 0, borderTop: '1px solid var(--line)', margin: '6px 4px' }} />
-              <button onClick={() => { authApi.signOut().finally(() => nav('/signin')); }}><Icon name="logout" />Sign out</button>
+              <button onClick={() => { signOut(() => nav('/signin')); }}><Icon name="logout" />Sign out</button>
             </div>
           )}
         </div>

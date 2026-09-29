@@ -1,5 +1,15 @@
-import { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { useEffect, type ReactNode } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <SignedIn>{children}</SignedIn>
+      <SignedOut><RedirectToSignIn /></SignedOut>
+    </>
+  );
+}
 import Shell from '@/components/Shell';
 import { Toast } from '@/components/Toast';
 import { useUiStore } from '@/lib/store';
@@ -35,7 +45,7 @@ export default function App() {
         <Route path="/signin" element={<SignIn />} />
         <Route path="/share/:token" element={<Share />} />
 
-        <Route element={<Shell />}>
+        <Route element={<RequireAuth><Shell /></RequireAuth>}>
           <Route path="/" element={<Home />} />
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/s/:id" element={<SessionView mode="live" />} />

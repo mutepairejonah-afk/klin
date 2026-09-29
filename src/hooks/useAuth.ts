@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
-import { authApi } from '@/lib/api';
+import { useUser } from '@clerk/clerk-react';
 
+// Reads the signed-in user straight from Clerk (already loaded client-side
+// via ClerkProvider) instead of round-tripping to the backend.
 export function useAuth() {
-  const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    authApi.me().then(setUser).catch(() => setUser(null)).finally(() => setLoading(false));
-  }, []);
-  return { user, loading };
+  const { user, isLoaded } = useUser();
+  return {
+    user: user
+      ? { id: user.id, name: user.fullName || user.username || user.primaryEmailAddress?.emailAddress || '', email: user.primaryEmailAddress?.emailAddress || '' }
+      : null,
+    loading: !isLoaded,
+  };
 }

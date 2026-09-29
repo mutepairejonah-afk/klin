@@ -1,27 +1,35 @@
-import { useState } from 'react';
+import { SignIn as ClerkSignIn } from '@clerk/clerk-react';
 import { BRAND } from '@/lib/brand';
-import { authApi } from '@/lib/api';
 
+// Which providers actually appear here (Google, GitHub, Vercel) is controlled
+// in the Clerk Dashboard under User & Authentication -> SSO connections, not
+// in this file — Clerk renders whatever's turned on there. Email sign-in is
+// on by default. See kiln-backend/README.md "Auth (Clerk)" for setup notes.
 export default function SignIn() {
-  const [email, setEmail] = useState('');
   return (
     <div className="bare">
       <div className="center">
-        <div className="card auth">
-          <div className="brand">
-            <svg viewBox="0 0 32 32" width={26} height={26}><rect x="3.5" y="3.5" width="25" height="25" rx="8" fill="none" stroke="var(--blue)" strokeWidth={1.6} />
-              <path d="m11 12.5 5 3.5-5 3.5" fill="none" stroke="var(--blue)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></svg>
-            <span style={{ fontFamily: '"Instrument Serif",serif', fontSize: 28 }}>{BRAND.name}</span>
-          </div>
-          <h1>Welcome back</h1>
-          <p className="muted" style={{ margin: '0 0 14px' }}>{BRAND.tagline}</p>
-          <a className="btn pri" href={authApi.oauthUrl('github')}>Continue with GitHub</a>
-          <a className="btn" href={authApi.oauthUrl('google')}>Continue with Google</a>
-          <div className="or">or</div>
-          <input className="input" type="email" placeholder="Email address" aria-label="Email address" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <a className="btn" href={`${authApi.oauthUrl('github')}?email=${encodeURIComponent(email)}`}>Continue with email</a>
-          <small>By continuing you agree to the Terms and Privacy Policy.</small>
+        <div className="brand" style={{ justifyContent: 'center', marginBottom: 18 }}>
+          <svg viewBox="0 0 32 32" width={26} height={26}><rect x="3.5" y="3.5" width="25" height="25" rx="8" fill="none" stroke="var(--blue)" strokeWidth={1.6} />
+            <path d="m11 12.5 5 3.5-5 3.5" fill="none" stroke="var(--blue)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <span style={{ fontFamily: '"Instrument Serif",serif', fontSize: 28 }}>{BRAND.name}</span>
         </div>
+        <ClerkSignIn
+          routing="virtual"
+          appearance={{
+            variables: {
+              colorPrimary: 'var(--blue)',
+              colorBackground: 'var(--card)',
+              colorText: 'var(--fg)',
+              colorTextSecondary: 'var(--muted)',
+              colorInputBackground: 'var(--bg)',
+              colorInputText: 'var(--fg)',
+              borderRadius: '10px',
+              fontFamily: 'inherit',
+            },
+            elements: { card: 'auth', footer: 'auth-footer' },
+          }}
+        />
       </div>
     </div>
   );

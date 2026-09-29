@@ -14,10 +14,24 @@ class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
+// Clerk (via ClerkProvider in main.tsx) attaches itself to window.Clerk once
+// loaded. Reading the session token here — rather than threading it through
+// every call site — keeps every existing api.ts function signature unchanged.
+async function clerkToken(): Promise<string | undefined> {
+  const clerk = (window as any).Clerk;
+  if (!clerk?.session) return undefined;
+  try { return await clerk.session.getToken(); } catch { return undefined; }
+}
+
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await clerkToken();
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers ?? {}),
+    },
     ...init,
   });
   if (!res.ok) {
@@ -63,12 +77,22 @@ export const sessionsApi = {
   // Backend: GET /sessions/:id/events as text/event-stream, one JSON
   // SessionEvent per `data:` line (see docs/BACKEND.md ยง Event Streaming).
   subscribe(id: string, onEvent: (e: SessionEvent) => void, onError?: (e: Event) => void) {
-    const es = new EventSource(`${API_BASE}/sessions/${id}/events`, { withCredentials: true });
-    es.onmessage = (msg) => {
-      try { onEvent(JSON.parse(msg.data) as SessionEvent); } catch { /* ignore malformed frame */ }
-    };
-    if (onError) es.onerror = onError;
-    return () => es.close();
+    let es: EventSource | undefined;
+    let cancelled = false;
+    // Native EventSource can't send an Authorization header, so the token
+    // rides along as a query param for this one route (backend accepts
+    // either). Opening is async because getToken() is, but callers get an
+    // unsubscribe function synchronously either way.
+    clerkToken().then((token) => {
+      if (cancelled) return;
+      const qs = token ? `?token=${encodeURIComponent(token)}` : '';
+      es = new EventSource(`${API_BASE}/sessions/${id}/events${qs}`, { withCredentials: true });
+      es.onmessage = (msg) => {
+        try { onEvent(JSON.parse(msg.data) as SessionEvent); } catch { /* ignore malformed frame */ }
+      };
+      if (onError) es.onerror = onError;
+    });
+    return () => { cancelled = true; es?.close(); };
   },
 };
 
