@@ -17,11 +17,11 @@ const ARTIFACT_ICON: Record<ArtifactKind, string> = {
 };
 
 export function ComputerPanel({
-  state, status, activeTab, onTab, events, onSelectFile, expanded, onExpand,
+  state, status, activeTab, onTab, events, onSelectFile, expanded, onExpand, minimized, onMinimize,
 }: {
   state: FoldedState; status: string; activeTab: string; onTab: (t: string) => void;
   events: SessionEvent[]; onSelectFile: (path: string) => void;
-  expanded?: boolean; onExpand?: () => void;
+  expanded?: boolean; onExpand?: () => void; minimized?: boolean; onMinimize?: () => void;
 }) {
   const now = status === 'done'
     ? <><Icon name="check" className="st-ok" /><span>Task completed</span></>
@@ -34,7 +34,16 @@ export function ComputerPanel({
       <div className="comp-h">
         <span className="ttl"><Icon name="monitor" />Agent’s computer</span>
         <span style={{ flex: 1 }} />
-        {onExpand && <button className="icon-btn hide-sm" aria-label="Expand" onClick={onExpand}><Icon name="max" /></button>}
+        {onMinimize && (
+          <button className="icon-btn hide-sm" aria-label={minimized ? 'Restore' : 'Minimize'} onClick={onMinimize}>
+            <Icon name={minimized ? 'chevron-down' : 'minus'} />
+          </button>
+        )}
+        {onExpand && (
+          <button className="icon-btn hide-sm" aria-label={expanded ? 'Exit full screen' : 'Full screen'} onClick={onExpand}>
+            <Icon name={expanded ? 'min' : 'max'} />
+          </button>
+        )}
       </div>
       <div className="now">{now}</div>
       <div className="ctabs" role="tablist">

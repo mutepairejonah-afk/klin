@@ -7,7 +7,7 @@
 export type AgentRole = 'planner' | 'executor' | 'critic' | 'retriever';
 
 export type ToolName =
-  | 'terminal' | 'editor' | 'browser' | 'preview' | 'db' | 'deploy' | 'git' | 'github' | 'tests';
+  | 'terminal' | 'editor' | 'browser' | 'preview' | 'db' | 'deploy' | 'git' | 'github' | 'tests' | 'search' | 'model';
 
 export type SessionStatus =
   | 'queued' | 'planning' | 'executing' | 'waiting_approval' | 'verifying'
@@ -118,7 +118,8 @@ export interface Connector {
   description: string;
   scopes: string[];
   connected: boolean;
-  meta?: string;
+  oauth?: boolean; // true = real OAuth flow (see connectionsApi.githubOAuthUrl); false = stub connect
+  meta?: { login?: string; avatarUrl?: string } | string;
   lastUsedAt?: string;
 }
 

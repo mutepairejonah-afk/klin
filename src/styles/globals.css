@@ -319,6 +319,17 @@ textarea::placeholder { color: var(--text-3); }
 .comp { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--card-line); border-radius: 16px; overflow: hidden; }
 .comp-h { display: flex; align-items: center; gap: 10px; padding: 12px 14px 4px; }
 .comp-h .ttl { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+/* Computer panel full-screen: covers the whole session view, thread hidden. */
+.sess.comp-full .thread-col { display: none; }
+.sess.comp-full .comp-col { position: fixed; inset: 0; z-index: 60; padding: 12px; background: var(--bg); }
+.sess.comp-full .comp { border-radius: 12px; height: 100%; }
+
+/* Computer panel minimized: collapses to just its header bar, thread gets full width. */
+.sess.comp-min .comp-col { flex: 0 0 auto; padding: 14px 16px 16px 0; }
+.sess.comp-min .comp { height: auto; }
+.sess.comp-min .comp-h { padding: 12px 14px; border-bottom: 0; }
+.sess.comp-min .now, .sess.comp-min .ctabs, .sess.comp-min .cbody, .sess.comp-min .ctl { display: none; }
 .now { padding: 0 14px 10px; font-size: 13.5px; color: var(--text-3); display: flex; gap: 6px; align-items: center; min-height: 26px; }
 .now b { color: var(--text); font-weight: 500; }
 .ctabs { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--line); overflow-x: auto; flex: none; }

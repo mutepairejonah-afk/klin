@@ -67,6 +67,9 @@ const PATHS: Record<string, string> = {
   list: 'M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.1M4 12h.1M4 17.5h.1',
   chart: 'M3.5 3.5h17v17h-17z M8.5 16v-4M12 16V8M15.5 16v-2.5',
   max: 'M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15',
+  min: 'M9 4.5H4.5V9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15',
+  minus: 'M5 12h14',
+  'chevron-down': 'm6 9 6 6 6-6',
 };
 
 export default function Icon({ name, className, ...rest }: { name: string; className?: string } & SVGProps<SVGSVGElement>) {

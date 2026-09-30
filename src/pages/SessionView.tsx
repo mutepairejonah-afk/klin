@@ -29,6 +29,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [compMode, setCompMode] = useState<'normal' | 'min' | 'full'>('normal');
 
   const { visibleEvents, state, cursor, setCursor, maxCursor, approve, sendMessage } =
     useSessionEvents(id, { mode });
@@ -67,7 +68,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   if (!meta) return <SessionViewSkeleton />;
 
   return (
-    <div className={`sess ${showCompMobile ? 'show-comp' : ''}`}>
+    <div className={`sess ${showCompMobile ? 'show-comp' : ''} ${compMode === 'full' ? 'comp-full' : ''} ${compMode === 'min' ? 'comp-min' : ''}`}>
       <HeaderLeft><span className="h-title goal" title={meta.goal}>{meta.goal}</span></HeaderLeft>
       <HeaderRight>
         {status === 'executing' || status === 'planning' ? (
@@ -125,6 +126,8 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
             onTab={(t) => { setTab(t); setFollow(false); }}
             events={visibleEvents}
             onSelectFile={(p) => { setSelectedFile(p); setTab('editor'); setFollow(false); }}
+            expanded={compMode === 'full'} onExpand={() => setCompMode((m) => (m === 'full' ? 'normal' : 'full'))}
+            minimized={compMode === 'min'} onMinimize={() => setCompMode((m) => (m === 'min' ? 'normal' : 'min'))}
           />
           {mode === 'replay' && (
             <div className="ctl">

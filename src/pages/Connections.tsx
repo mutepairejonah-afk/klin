@@ -36,6 +36,17 @@ export default function Connections() {
   }
   useEffect(refresh, []);
 
+  // After a real OAuth round-trip, GitHub's callback redirects back here with
+  // ?connected=github or ?error=... — surface it once, then clean the URL.
+  useEffect(() => {
+    const connected = params.get('connected');
+    const err = params.get('error');
+    if (connected) { toast(`Connected ${connected}`); refresh(); }
+    if (err) toast(err === 'github_not_configured' ? 'GitHub connector isn’t set up on the server yet' : 'Connection failed — try again');
+    if (connected || err) { params.delete('connected'); params.delete('error'); setParams(params, { replace: true }); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const byId = new Map(connectors.map((c) => [c.id, c]));
 
   return (
@@ -64,7 +75,9 @@ export default function Connections() {
                     <div className="muted" style={{ fontSize: 14, margin: '2px 0 8px' }}>{c.description}</div>
                     {connected && (
                       <>
-                        <div className="muted" style={{ fontSize: 13 }}>{live?.meta}</div>
+                        <div className="muted" style={{ fontSize: 13 }}>
+                          {typeof live?.meta === 'string' ? live.meta : live?.meta?.login ? `Signed in as ${live.meta.login}` : null}
+                        </div>
                         <div className="chips" style={{ marginTop: 8 }}>{c.scopes.map((s) => <span className="badge" key={s}>{s}</span>)}</div>
                       </>
                     )}
@@ -72,9 +85,16 @@ export default function Connections() {
                   <button
                     className={`btn sm ${connected ? '' : 'pri'}`}
                     disabled={loading}
-                    onClick={() => (connected
-                      ? connectionsApi.disconnect(c.id).then(refresh).catch(() => toast('Backend not connected yet'))
-                      : connectionsApi.connect(c.id).then(refresh).catch(() => toast('Backend not connected yet')))}
+                    onClick={() => {
+                      if (connected) { connectionsApi.disconnect(c.id).then(refresh).catch(() => toast('Backend not connected yet')); return; }
+                      if (live?.oauth) {
+                        connectionsApi.githubOAuthUrl()
+                          .then(({ url }) => { window.location.href = url; })
+                          .catch(() => toast('GitHub connector isn’t set up on the server yet'));
+                        return;
+                      }
+                      connectionsApi.connect(c.id).then(refresh).catch(() => toast('Backend not connected yet'));
+                    }}
                   >
                     {loading ? <Skeleton width={50} height={12} style={{ display: 'inline-block' }} /> : connected ? 'Manage' : 'Connect'}
                   </button>
