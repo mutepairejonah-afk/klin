@@ -94,7 +94,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
       </HeaderRight>
 
       <section className="thread-col">
-        <RoleBar state={state} status={status} />
+        {hasComp && <RoleBar state={state} status={status} />}
         <div className="thr-scroll">
           <ThreadPanel goal={meta.goal} state={state} status={status} onTab={selectTab} onApprove={approve} extraMessages={extra} />
         </div>

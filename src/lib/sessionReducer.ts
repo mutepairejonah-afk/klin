@@ -66,7 +66,13 @@ export function foldEvents(events: SessionEvent[]): FoldedState {
         s.role = e.payload.role;
         break;
       case 'action.started':
-        s.thread.push({ kind: 'act', role: e.payload.role, tool: e.payload.tool, verb: e.payload.verb, target: e.payload.target });
+        // tool: 'model' means "generating the answer" — not a real tool use,
+        // so it stays off the visible thread (it still drives the "Thinking"
+        // shimmer via s.role/s.phase below). Search and any future real tool
+        // (terminal, editor, ...) show up as a normal action row.
+        if (e.payload.tool !== 'model') {
+          s.thread.push({ kind: 'act', role: e.payload.role, tool: e.payload.tool, verb: e.payload.verb, target: e.payload.target });
+        }
         s.role = e.payload.role;
         s.phase = 'executing';
         break;
@@ -127,7 +133,10 @@ export function foldEvents(events: SessionEvent[]): FoldedState {
         s.phase = 'failed';
         break;
       case 'session.done':
-        s.thread.push({ kind: 'done', text: e.payload.summary });
+        // Don't push another thread message here — the real answer was
+        // already shown via the 'thought' event just before this. Pushing
+        // payload.summary too just repeats it (this used to duplicate every
+        // chat answer on screen).
         s.finished = true;
         s.phase = 'done';
         s.role = null;
