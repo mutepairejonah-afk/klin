@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { ConnectorPicker } from '@/components/ConnectorPicker';
+import { RepoPicker, BranchPicker } from '@/components/RepoPicker';
 import { JOB_TEMPLATES, jobById } from '@/lib/jobs';
 import { useUiStore } from '@/lib/store';
 import { sessionsApi, connectionsApi } from '@/lib/api';
@@ -13,7 +14,7 @@ import type { Connector } from '@/lib/types';
 export default function AiAgent() {
   const nav = useNavigate();
   const toast = useToast((s) => s.show);
-  const { draft, setDraft, selectedJobId, setSelectedJobId, selectedConnectors, repo, branch, selectedAgent, setSelectedAgent } = useUiStore();
+  const { draft, setDraft, selectedJobId, setSelectedJobId, selectedConnectors, repo, branch, setRepo, setBranch, selectedAgent, setSelectedAgent } = useUiStore();
   const [specialists, setSpecialists] = useState<Specialist[]>([]);
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [starting, setStarting] = useState(false);
@@ -128,6 +129,16 @@ export default function AiAgent() {
             <div className="l">
               <button className="circle" aria-label="Attach a ZIP or files" onClick={() => toast('Attach ZIP or files')}><Icon name="plus" /></button>
               <ConnectorPicker connectors={connectors} />
+              {selectedConnectors.includes('github') && (
+                <>
+                  <RepoPicker
+                    repo={repo}
+                    connected={!!connectors.find((c) => c.id === 'github')?.connected}
+                    onPick={(r, b) => { setRepo(r); setBranch(b); }}
+                  />
+                  <BranchPicker repo={repo} branch={branch} onPick={setBranch} />
+                </>
+              )}
               {job && (
                 <span className="pill tag">
                   <Icon name={job.icon} />{job.name}

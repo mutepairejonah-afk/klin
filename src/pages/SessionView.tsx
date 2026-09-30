@@ -42,6 +42,10 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const status = meta ? statusFromFold(state, meta.status) : 'planning';
   const displayState = selectedFile && state.files[selectedFile] ? { ...state, currentFile: selectedFile } : state;
   const activeTab = follow ? lastToolTab(state) ?? tab : tab;
+  // Only show the "Agent's computer" panel once the agent actually used a real
+  // tool (search, terminal, editor, ...) — a plain chat/research answer that
+  // only ever "thinks" (tool: 'model') has nothing to show there.
+  const hasComp = visibleEvents.some((e) => e.type === 'action.started' && (e as any).payload?.tool && (e as any).payload.tool !== 'model');
 
   function selectTab(t: string) { setTab(t); setFollow(false); }
   function openComputer() {
@@ -68,7 +72,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   if (!meta) return <SessionViewSkeleton />;
 
   return (
-    <div className={`sess ${showCompMobile ? 'show-comp' : ''} ${compMode === 'full' ? 'comp-full' : ''} ${compMode === 'min' ? 'comp-min' : ''}`}>
+    <div className={`sess ${showCompMobile ? 'show-comp' : ''} ${compMode === 'full' ? 'comp-full' : ''} ${compMode === 'min' ? 'comp-min' : ''} ${hasComp ? 'has-comp' : ''}`}>
       <HeaderLeft><span className="h-title goal" title={meta.goal}>{meta.goal}</span></HeaderLeft>
       <HeaderRight>
         {status === 'executing' || status === 'planning' ? (
@@ -80,9 +84,11 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
             <Icon name="play" /><span className="hide-xs">Resume</span>
           </button>
         ) : null}
-        <button className="btn sm only-m" aria-label="Toggle computer view" onClick={() => setShowCompMobile((v) => !v)}>
-          <Icon name={showCompMobile ? 'list' : 'monitor'} /><span className="hide-xs">{showCompMobile ? 'Thread' : 'Computer'}</span>
-        </button>
+        {hasComp && (
+          <button className="btn sm only-m" aria-label="Toggle computer view" onClick={() => setShowCompMobile((v) => !v)}>
+            <Icon name={showCompMobile ? 'list' : 'monitor'} /><span className="hide-xs">{showCompMobile ? 'Thread' : 'Computer'}</span>
+          </button>
+        )}
         {mode === 'live' && <Link className="btn sm hide-sm" to={`/s/${id}/replay`}><Icon name="play" />Replay</Link>}
         <button className="btn sm" onClick={() => setShareOpen(true)}><Icon name="share" /><span className="hide-xs">Share</span></button>
       </HeaderRight>

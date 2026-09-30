@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { ConnectorPicker } from '@/components/ConnectorPicker';
+import { RepoPicker, BranchPicker } from '@/components/RepoPicker';
 import { useUiStore } from '@/lib/store';
 import { jobById } from '@/lib/jobs';
 import { useSessions } from '@/hooks/useSessions';
@@ -68,12 +69,12 @@ export default function Home() {
               <ConnectorPicker connectors={connectors} />
               {selectedConnectors.includes('github') && (
                 <>
-                  <span className="pill" onClick={() => { const r = prompt('Repository', repo); if (r != null) setRepo(r); }}>
-                    <Icon name="folder" />{repo || 'Repository'}
-                  </span>
-                  <span className="pill" onClick={() => { const b = prompt('Branch', branch || 'main'); if (b != null) setBranch(b); }}>
-                    <Icon name="branch" />{branch || 'Branch'}
-                  </span>
+                  <RepoPicker
+                    repo={repo}
+                    connected={!!connectors.find((c) => c.id === 'github')?.connected}
+                    onPick={(r, b) => { setRepo(r); setBranch(b); }}
+                  />
+                  <BranchPicker repo={repo} branch={branch} onPick={setBranch} />
                 </>
               )}
               {job && (

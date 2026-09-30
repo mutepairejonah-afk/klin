@@ -114,6 +114,8 @@ export const connectionsApi = {
     http<Connector>(`/connections/${id}/connect`, { method: 'POST', body: JSON.stringify({ authCode }) }),
   disconnect: (id: string) => http<void>(`/connections/${id}`, { method: 'DELETE' }),
   githubOAuthUrl: () => http<{ url: string }>('/connections/github/start'),
+  githubRepos: () => http<{ fullName: string; private: boolean; defaultBranch: string; updatedAt: string }[]>('/connections/github/repos'),
+  githubBranches: (fullName: string) => http<string[]>(`/connections/github/repos/${fullName}/branches`),
 };
 export const secretsApi = {
   list: () => http<Secret[]>('/secrets'),
