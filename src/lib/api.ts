@@ -55,6 +55,7 @@ export const sessionsApi = {
   list: (filter?: { status?: SessionStatus; repo?: string }) =>
     http<Session[]>(`/sessions${qs(filter)}`),
   get: (id: string) => http<Session>(`/sessions/${id}`),
+  delete: (id: string) => http<void>(`/sessions/${id}`, { method: 'DELETE' }),
   create: (input: CreateSessionInput) =>
     http<Session>('/sessions', { method: 'POST', body: JSON.stringify(input) }),
   pause: (id: string) => http<void>(`/sessions/${id}/pause`, { method: 'POST' }),
@@ -147,15 +148,22 @@ export const auditApi = { list: () => http<AuditEntry[]>('/audit') };
 export interface UserSettings {
   name: string; email: string;
   testFramework: string; commitStyle: string; branchNaming: string;
-  modelRouting: Record<'planner' | 'executor' | 'critic' | 'retriever', string>;
+  modelRouting?: { provider?: 'openrouter' | 'google' | 'ollama' | 'anthropic'; model?: string } | null;
   networkAllowlist: string[];
   approvalRules: Record<string, boolean>;
+}
+export interface ModelCatalogEntry {
+  id: 'openrouter' | 'google' | 'ollama' | 'anthropic';
+  label: string;
+  configured: boolean;
+  models: { id: string; label: string }[];
 }
 export const settingsApi = {
   get: () => http<UserSettings>('/settings'),
   update: (patch: Partial<UserSettings>) =>
     http<UserSettings>('/settings', { method: 'PATCH', body: JSON.stringify(patch) }),
 };
+export const modelsApi = { list: () => http<ModelCatalogEntry[]>('/models') };
 export const membersApi = {
   list: () => http<Member[]>('/members'),
   invite: (email: string, role: Member['role']) =>

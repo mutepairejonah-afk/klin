@@ -5,6 +5,8 @@ import { EmptyState } from '@/components/EmptyState';
 import { SessionRowsSkeleton } from '@/components/Skeleton';
 import { useSessions } from '@/hooks/useSessions';
 import { jobById } from '@/lib/jobs';
+import { sessionsApi } from '@/lib/api';
+import { useToast } from '@/components/Toast';
 import type { SessionStatus } from '@/lib/types';
 
 const TABS: { key: SessionStatus | 'all'; label: string }[] = [
@@ -19,7 +21,13 @@ export default function Sessions() {
   const [params, setParams] = useSearchParams();
   const nav = useNavigate();
   const f = (params.get('status') as SessionStatus | 'all') || 'all';
-  const { sessions, loading } = useSessions(f === 'all' ? undefined : { status: f });
+  const { sessions, loading, refetch } = useSessions(f === 'all' ? undefined : { status: f });
+  const toast = useToast((s) => s.show);
+
+  function deleteSession(id: string, goal: string) {
+    if (!confirm(`Delete "${goal}"? This can't be undone.`)) return;
+    sessionsApi.delete(id).then(refetch).catch(() => toast('Could not delete — try again'));
+  }
 
   return (
     <>
@@ -45,7 +53,7 @@ export default function Sessions() {
         {!loading && sessions.length > 0 && (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Task</th><th>Repository</th><th>Job</th><th>Status</th><th>Duration</th><th>Cost</th></tr></thead>
+              <thead><tr><th>Task</th><th>Repository</th><th>Job</th><th>Status</th><th>Duration</th><th>Cost</th><th></th></tr></thead>
               <tbody>
                 {sessions.map((s) => (
                   <tr key={s.id} data-go onClick={() => nav(`/s/${s.id}`)}>
@@ -55,6 +63,14 @@ export default function Sessions() {
                     <td><span className="badge">{s.status}</span></td>
                     <td>{s.durationSec ? `${Math.round(s.durationSec / 60)} min` : '—'}</td>
                     <td>{s.costUsd != null ? `$${s.costUsd.toFixed(2)}` : '—'}</td>
+                    <td>
+                      <button
+                        className="icon-btn" aria-label="Delete session"
+                        onClick={(e) => { e.stopPropagation(); deleteSession(s.id, s.goal); }}
+                      >
+                        <Icon name="trash" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

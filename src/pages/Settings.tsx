@@ -4,7 +4,7 @@ import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/Toast';
-import { settingsApi, membersApi, secretsApi, type UserSettings } from '@/lib/api';
+import { settingsApi, membersApi, secretsApi, modelsApi, type UserSettings, type ModelCatalogEntry } from '@/lib/api';
 import { useUiStore } from '@/lib/store';
 import { RowItemsSkeleton } from '@/components/Skeleton';
 import type { Member, Secret } from '@/lib/types';
@@ -19,6 +19,7 @@ export default function Settings() {
   const theme = useUiStore((s) => s.theme);
   const setTheme = useUiStore((s) => s.setTheme);
   const [s, setS] = useState<UserSettings | null>(null);
+  const [models, setModels] = useState<ModelCatalogEntry[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [secrets, setSecrets] = useState<Secret[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
@@ -31,6 +32,7 @@ export default function Settings() {
 
   useEffect(() => {
     settingsApi.get().then(setS).catch(() => setS(null));
+    modelsApi.list().then(setModels).catch(() => setModels([]));
     membersApi.list().then(setMembers).catch(() => setMembers([])).finally(() => setMembersLoading(false));
     refreshSecrets();
   }, []);
@@ -81,16 +83,43 @@ export default function Settings() {
         </div>
 
         <div className="card pad" style={{ marginTop: 14 }}>
-          <h3>Model routing</h3>
-          <p className="muted" style={{ margin: '0 0 8px', fontSize: 14 }}>Each agent role runs on its own model.</p>
-          {(['planner', 'executor', 'critic', 'retriever'] as const).map((role) => (
-            <div className="row-item" style={{ padding: '10px 0' }} key={role}>
-              <div className="txt"><b style={{ fontWeight: 500 }}>{role[0].toUpperCase() + role.slice(1)}</b></div>
-              <select className="input" defaultValue={s?.modelRouting?.[role]} onChange={(e) => save({ modelRouting: { ...(s?.modelRouting ?? {} as any), [role]: e.target.value } })}>
-                <option>Anthropic — large</option><option>Anthropic — fast</option><option>OpenAI — large</option><option>OpenAI — fast</option><option>Self-hosted (vLLM)</option>
+          <h3>Model</h3>
+          <p className="muted" style={{ margin: '0 0 8px', fontSize: 14 }}>
+            Which AI provider new sessions use first. If it's unavailable or rate-limited, klin falls back to the next configured provider automatically.
+          </p>
+          <div className="row-item" style={{ padding: '10px 0' }}>
+            <div className="txt"><b style={{ fontWeight: 500 }}>Provider</b></div>
+            <select
+              className="input"
+              value={s?.modelRouting?.provider ?? ''}
+              onChange={(e) => {
+                const provider = e.target.value as ModelCatalogEntry['id'];
+                const entry = models.find((m) => m.id === provider);
+                save({ modelRouting: e.target.value ? { provider, model: entry?.models[0]?.id } : null });
+              }}
+            >
+              <option value="">Server default</option>
+              {models.map((m) => (
+                <option key={m.id} value={m.id} disabled={!m.configured}>
+                  {m.label}{!m.configured ? ' — no key set on server' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          {s?.modelRouting?.provider && (
+            <div className="row-item" style={{ padding: '10px 0' }}>
+              <div className="txt"><b style={{ fontWeight: 500 }}>Model</b></div>
+              <select
+                className="input"
+                value={s.modelRouting.model ?? ''}
+                onChange={(e) => save({ modelRouting: { provider: s.modelRouting!.provider, model: e.target.value } })}
+              >
+                {models.find((m) => m.id === s.modelRouting!.provider)?.models.map((mo) => (
+                  <option key={mo.id} value={mo.id}>{mo.label}</option>
+                ))}
               </select>
             </div>
-          ))}
+          )}
         </div>
 
         <div className="card pad" style={{ marginTop: 14 }}>
