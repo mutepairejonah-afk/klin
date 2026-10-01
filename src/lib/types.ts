@@ -118,7 +118,7 @@ export interface Connector {
   description: string;
   scopes: string[];
   connected: boolean;
-  oauth?: boolean; // true = real OAuth flow (see connectionsApi.githubOAuthUrl); false = stub connect
+  oauth?: boolean; // true = real OAuth flow; false = unavailable until that provider is implemented
   meta?: { login?: string; avatarUrl?: string } | string;
   lastUsedAt?: string;
 }

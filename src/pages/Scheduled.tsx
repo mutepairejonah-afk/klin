@@ -36,7 +36,7 @@ export default function Scheduled() {
                   <div className="txt"><b style={{ fontWeight: 500 }}>{s.name}</b><small>{jobById(s.jobId)?.name}{s.repo ? ` · ${s.repo}` : ''} · {s.cadenceLabel}</small></div>
                   {s.nextRunAt && <div className="muted hide-sm" style={{ textAlign: 'right', fontSize: 13.5 }}>Next run<br /><span style={{ color: 'var(--text)' }}>{s.nextRunAt}</span></div>}
                   <label className="switch">
-                    <input type="checkbox" checked={s.enabled} onChange={(e) => schedulesApi.update(s.id, { enabled: e.target.checked }).then(refresh).catch(() => toast('Backend not connected yet'))} aria-label={`Enable ${s.name}`} />
+                    <input type="checkbox" checked={s.enabled} onChange={(e) => schedulesApi.update(s.id, { enabled: e.target.checked }).then(refresh).catch(() => toast('Request failed — check your connection or permissions'))} aria-label={`Enable ${s.name}`} />
                     <span />
                   </label>
                 </div>
@@ -75,7 +75,7 @@ function NewScheduleForm({ onDone, onClose }: { onDone: () => void; onClose: () 
         <button className="btn" onClick={onClose}>Cancel</button>
         <button className="btn pri" onClick={() => {
           schedulesApi.create({ name: name || 'Untitled schedule', jobId, repo, cadenceLabel, cadenceCron: '', enabled: true })
-            .then(onDone).catch(() => toast('Backend not connected yet'));
+            .then(onDone).catch(() => toast('Request failed — check your connection or permissions'));
         }}>Save schedule</button>
       </div>
     </>

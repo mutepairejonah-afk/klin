@@ -72,7 +72,7 @@ export default function AiAgent() {
       setDraft(''); setSelectedJobId(null); setSelectedAgent(null);
       nav(`/s/${session.id}`);
     } catch {
-      toast('Backend not connected yet');
+      toast('Request failed — check your connection or permissions');
     } finally {
       setStarting(false);
     }

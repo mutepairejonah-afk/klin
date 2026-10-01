@@ -86,14 +86,14 @@ export default function Connections() {
                     className={`btn sm ${connected ? '' : 'pri'}`}
                     disabled={loading}
                     onClick={() => {
-                      if (connected) { connectionsApi.disconnect(c.id).then(refresh).catch(() => toast('Backend not connected yet')); return; }
+                      if (connected) { connectionsApi.disconnect(c.id).then(refresh).catch(() => toast('Request failed — check your connection or permissions')); return; }
                       if (live?.oauth) {
                         connectionsApi.githubOAuthUrl()
                           .then(({ url }) => { window.location.href = url; })
                           .catch(() => toast('GitHub connector isn’t set up on the server yet'));
                         return;
                       }
-                      connectionsApi.connect(c.id).then(refresh).catch(() => toast('Backend not connected yet'));
+                      connectionsApi.connect(c.id).then(refresh).catch(() => toast('Request failed — check your connection or permissions'));
                     }}
                   >
                     {loading ? <Skeleton width={50} height={12} style={{ display: 'inline-block' }} /> : connected ? 'Manage' : 'Connect'}

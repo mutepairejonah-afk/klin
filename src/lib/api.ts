@@ -74,26 +74,49 @@ export const sessionsApi = {
       method: 'POST', body: JSON.stringify({ public: isPublic }),
     }),
 
-  // Live event stream. Returns an unsubscribe function.
-  // Backend: GET /sessions/:id/events as text/event-stream, one JSON
-  // SessionEvent per `data:` line (see docs/BACKEND.md ยง Event Streaming).
+  // Live event stream. Uses fetch rather than native EventSource so Clerk's
+  // bearer token stays in an Authorization header, not in URLs/proxy logs.
   subscribe(id: string, onEvent: (e: SessionEvent) => void, onError?: (e: Event) => void) {
-    let es: EventSource | undefined;
+    const controller = new AbortController();
     let cancelled = false;
-    // Native EventSource can't send an Authorization header, so the token
-    // rides along as a query param for this one route (backend accepts
-    // either). Opening is async because getToken() is, but callers get an
-    // unsubscribe function synchronously either way.
     clerkToken().then((token) => {
       if (cancelled) return;
-      const qs = token ? `?token=${encodeURIComponent(token)}` : '';
-      es = new EventSource(`${API_BASE}/sessions/${id}/events${qs}`, { withCredentials: true });
-      es.onmessage = (msg) => {
-        try { onEvent(JSON.parse(msg.data) as SessionEvent); } catch { /* ignore malformed frame */ }
-      };
-      if (onError) es.onerror = onError;
+      void (async () => {
+        let attempt = 0;
+        while (!cancelled && attempt < 5) {
+          try {
+            const res = await fetch(`${API_BASE}/sessions/${id}/events`, {
+              credentials: 'include',
+              signal: controller.signal,
+              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
+            if (!res.ok || !res.body) throw new ApiError(res.status, await res.text().catch(() => res.statusText));
+            attempt = 0;
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            while (!cancelled) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const frames = buffer.split('\n\n');
+              buffer = frames.pop() ?? '';
+              for (const frame of frames) {
+                const data = frame.split('\n').find((line) => line.startsWith('data:'))?.slice(5).trim();
+                if (!data) continue;
+                try { onEvent(JSON.parse(data) as SessionEvent); } catch { /* ignore malformed frame */ }
+              }
+            }
+          } catch (err) {
+            if (cancelled) return;
+            attempt += 1;
+            if (attempt >= 5) { onError?.(err as Event); return; }
+            await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * 2 ** attempt, 8000)));
+          }
+        }
+      })();
     });
-    return () => { cancelled = true; es?.close(); };
+    return () => { cancelled = true; controller.abort(); };
   },
 };
 

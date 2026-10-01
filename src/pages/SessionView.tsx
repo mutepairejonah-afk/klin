@@ -76,11 +76,11 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
       <HeaderLeft><span className="h-title goal" title={meta.goal}>{meta.goal}</span></HeaderLeft>
       <HeaderRight>
         {status === 'executing' || status === 'planning' ? (
-          <button className="btn sm" onClick={() => sessionsApi.pause(id).catch(() => toast('Backend not connected yet'))}>
+          <button className="btn sm" onClick={() => sessionsApi.pause(id).catch(() => toast('Request failed — check your connection or permissions'))}>
             <Icon name="pause" /><span className="hide-xs">Pause</span>
           </button>
         ) : status === 'paused' ? (
-          <button className="btn sm" onClick={() => sessionsApi.resume(id).catch(() => toast('Backend not connected yet'))}>
+          <button className="btn sm" onClick={() => sessionsApi.resume(id).catch(() => toast('Request failed — check your connection or permissions'))}>
             <Icon name="play" /><span className="hide-xs">Resume</span>
           </button>
         ) : null}
@@ -104,7 +104,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
               <PlanCard state={state} status={status} onOpenComputer={openComputer} />
               <div className="composer steer slim">
                 <textarea
-                  rows={1} placeholder={status === 'failed' ? 'Get more credits to continue' : 'Message Kiln'}
+                  rows={1} placeholder={status === 'failed' ? 'Session failed — start a new run' : 'Message Kiln'}
                   value={message} onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
                 />

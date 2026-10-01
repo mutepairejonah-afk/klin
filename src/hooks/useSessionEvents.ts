@@ -25,11 +25,13 @@ export function useSessionEvents(sessionId: string, opts: Options) {
     if (opts.mode === 'live') {
       unsubRef.current = sessionsApi.subscribe(
         sessionId,
-        (e) => setEvents((prev) => [...prev, e]),
+        (e) => {
+          setConnected(true);
+          setEvents((prev) => prev.some((item) => item.seq === e.seq) ? prev : [...prev, e]);
+        },
         () => setConnected(false),
       );
-      setConnected(true);
-      return () => unsubRef.current?.();
+      return () => { setConnected(false); unsubRef.current?.(); };
     }
     const fetcher = opts.mode === 'share' && opts.shareToken
       ? shareApi.replay(opts.shareToken)
@@ -44,12 +46,6 @@ export function useSessionEvents(sessionId: string, opts: Options) {
 
   const approve = useCallback((approvalId: string, decision: 'approved' | 'rejected') => {
     if (opts.mode !== 'live') return;
-    // Optimistic local echo so the UI responds instantly; the real
-    // approval.resolved event from the server reconciles moments later.
-    setEvents((prev) => [...prev, {
-      seq: prev.length, ts: new Date().toISOString(),
-      type: 'approval.resolved', payload: { id: approvalId, decision },
-    }]);
     sessionsApi.resolveApproval(sessionId, approvalId, decision).catch((err) => setLoadError(String(err)));
   }, [sessionId, opts.mode]);
 

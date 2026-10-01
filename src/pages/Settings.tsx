@@ -40,11 +40,11 @@ export default function Settings() {
   function removeSecret(id: string) {
     secretsApi.remove(id)
       .then(() => setSecrets((list) => list.filter((sec) => sec.id !== id)))
-      .catch(() => toast('Backend not connected yet'));
+      .catch(() => toast('Request failed — check your connection or permissions'));
   }
 
   function save(patch: Partial<UserSettings>) {
-    settingsApi.update(patch).then(setS).catch(() => toast('Backend not connected yet'));
+    settingsApi.update(patch).then(setS).catch(() => toast('Request failed — check your connection or permissions'));
   }
 
   return (
@@ -152,7 +152,7 @@ export default function Settings() {
         <div className="card" style={{ marginTop: 14 }}>
           <div style={{ padding: '18px 20px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3>Members</h3>
-            <button className="btn sm" onClick={() => { const email = prompt('Invite by email'); if (email) membersApi.invite(email, 'operator').then((m) => setMembers((ms) => [...ms, m])).catch(() => toast('Backend not connected yet')); }}>
+            <button className="btn sm" onClick={() => { const email = prompt('Invite by email'); if (email) membersApi.invite(email, 'operator').then((m) => setMembers((ms) => [...ms, m])).catch(() => toast('Request failed — check your connection or permissions')); }}>
               <Icon name="plus" />Invite
             </button>
           </div>
@@ -164,7 +164,7 @@ export default function Settings() {
                 <span className="avatar" style={{ width: 32, height: 32 }}>{m.name[0]}</span>
                 <div className="txt"><b style={{ fontWeight: 500 }}>{m.name}</b><small>{m.email}</small></div>
                 <select className="input" disabled={m.role === 'owner'} defaultValue={m.role}
-                  onChange={(e) => membersApi.updateRole(m.id, e.target.value as Member['role']).catch(() => toast('Backend not connected yet'))}>
+                  onChange={(e) => membersApi.updateRole(m.id, e.target.value as Member['role']).catch(() => toast('Request failed — check your connection or permissions'))}>
                   <option value="owner">Owner</option><option value="operator">Operator</option><option value="viewer">Viewer</option>
                 </select>
               </div>
@@ -222,7 +222,7 @@ function AddSecretForm({ onDone, onClose }: { onDone: () => void; onClose: () =>
         <button className="btn" onClick={onClose}>Cancel</button>
         <button className="btn pri" onClick={() => {
           if (!handle) { toast('Enter a handle'); return; }
-          secretsApi.create(handle, value, scope).then(onDone).catch(() => toast('Backend not connected yet'));
+          secretsApi.create(handle, value, scope).then(onDone).catch(() => toast('Request failed — check your connection or permissions'));
         }}>Save secret</button>
       </div>
     </>
