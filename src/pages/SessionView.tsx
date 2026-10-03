@@ -5,6 +5,8 @@ import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { RoleBar, ThreadPanel } from '@/components/ThreadPanel';
 import { PlanCard } from '@/components/PlanCard';
 import { ComputerPanel } from '@/components/ComputerPanel';
+import { DesignPreview } from '@/components/DesignPreview';
+import { derivePreviews } from '@/lib/previews';
 import { ConnectorPicker } from '@/components/ConnectorPicker';
 import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/Toast';
@@ -30,6 +32,8 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [compMode, setCompMode] = useState<'normal' | 'min' | 'full'>('normal');
+  const [openPreviewId, setOpenPreviewId] = useState<string | null>(null);
+  const seenPreviews = useRef<Set<string>>(new Set());
 
   const { visibleEvents, state, cursor, setCursor, maxCursor, approve, sendMessage } =
     useSessionEvents(id, { mode });
@@ -45,8 +49,24 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   // Only show the "Agent's computer" panel once the agent actually used a real
   // tool (search, terminal, editor, ...) — a plain chat/research answer that
   // only ever "thinks" (tool: 'model') has nothing to show there.
-  const hasComp = visibleEvents.some((e) => e.type === 'action.started' && (e as any).payload?.tool && (e as any).payload.tool !== 'model');
+  const previews = useMemo(() => derivePreviews(state), [state]);
+  // Like Claude: a newly created preview opens itself once; the user can hide it.
+  useEffect(() => {
+    const fresh = previews.find((p) => !seenPreviews.current.has(p.id));
+    previews.forEach((p) => seenPreviews.current.add(p.id));
+    if (fresh) { setOpenPreviewId(fresh.id); setShowCompMobile(true); }
+  }, [previews]);
+  useEffect(() => {
+    if (openPreviewId && !previews.some((p) => p.id === openPreviewId)) setOpenPreviewId(null);
+  }, [previews, openPreviewId]);
+  const hasTools = visibleEvents.some((e) => e.type === 'action.started' && (e as any).payload?.tool && (e as any).payload.tool !== 'model');
+  const hasComp = hasTools || previews.length > 0;
+  const previewOpen = !!openPreviewId;
 
+  function togglePreview(id: string) {
+    setOpenPreviewId((cur) => (cur === id ? null : id));
+    setShowCompMobile(true);
+  }
   function selectTab(t: string) { setTab(t); setFollow(false); }
   function openComputer() {
     setFollow(true);
@@ -75,7 +95,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   if (!meta) return <SessionViewSkeleton />;
 
   return (
-    <div className={`sess ${showCompMobile ? 'show-comp' : ''} ${compMode === 'full' ? 'comp-full' : ''} ${compMode === 'min' ? 'comp-min' : ''} ${hasComp ? 'has-comp' : ''}`}>
+    <div className={`sess ${showCompMobile ? 'show-comp' : ''} ${compMode === 'full' ? 'comp-full' : ''} ${compMode === 'min' && !previewOpen ? 'comp-min' : ''} ${hasTools || previewOpen ? 'has-comp' : ''}`}>
       <HeaderLeft><span className="h-title goal" title={meta.goal}>{meta.goal}</span></HeaderLeft>
       <HeaderRight>
         {status === 'executing' || status === 'planning' ? (
@@ -97,9 +117,10 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
       </HeaderRight>
 
       <section className="thread-col">
-        {hasComp && <RoleBar state={state} status={status} />}
+        {hasTools && <RoleBar state={state} status={status} />}
         <div className="thr-scroll">
-          <ThreadPanel goal={meta.goal} state={state} status={status} onTab={selectTab} onApprove={approve} />
+          <ThreadPanel goal={meta.goal} state={state} status={status} onTab={(t) => { setOpenPreviewId(null); selectTab(t); }} onApprove={approve}
+            previews={previews} openPreviewId={openPreviewId} onTogglePreview={togglePreview} />
         </div>
         {mode === 'live' && (
           <div className="dock">
@@ -131,6 +152,14 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
 
       <section className="comp-col">
         <div className="comp">
+          {previewOpen ? (
+            <DesignPreview
+              items={previews} activeId={openPreviewId!} onSelect={setOpenPreviewId}
+              onClose={() => { setOpenPreviewId(null); setCompMode('normal'); if (!hasTools) setShowCompMobile(false); }}
+              expanded={compMode === 'full'} onExpand={() => setCompMode((m) => (m === 'full' ? 'normal' : 'full'))}
+              onShowComputer={hasTools ? () => { setOpenPreviewId(null); setFollow(true); } : undefined}
+            />
+          ) : (
           <ComputerPanel
             state={displayState} status={status} activeTab={activeTab}
             onTab={(t) => { setTab(t); setFollow(false); }}
@@ -139,7 +168,8 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
             expanded={compMode === 'full'} onExpand={() => setCompMode((m) => (m === 'full' ? 'normal' : 'full'))}
             minimized={compMode === 'min'} onMinimize={() => setCompMode((m) => (m === 'min' ? 'normal' : 'min'))}
           />
-          {mode === 'replay' && (
+          )}
+          {mode === 'replay' && !previewOpen && (
             <div className="ctl">
               <button className="icon-btn" aria-label="Previous step" onClick={() => setCursor(Math.max(0, cursor - 1))}><Icon name="back" /></button>
               <button className="icon-btn" aria-label="Next step" onClick={() => setCursor(Math.min(maxCursor, cursor + 1))}><Icon name="fwd" /></button>

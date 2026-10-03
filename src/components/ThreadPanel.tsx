@@ -2,6 +2,8 @@ import Icon from './Icon';
 import type { FoldedState, ThreadItem } from '@/lib/sessionReducer';
 import { TOOL_ICON } from '@/lib/toolMeta';
 import { fmtDuration } from '@/lib/format';
+import { ArtifactCard } from './DesignPreview';
+import type { PreviewItem } from '@/lib/previews';
 
 const ROLE_ORDER = ['planner', 'executor', 'critic', 'retriever'] as const;
 const PHASES: [string, string][] = [
@@ -91,10 +93,11 @@ function ThreadEntry({ item, onTab, onApprove }: {
 }
 
 export function ThreadPanel({
-  goal, state, status, onTab, onApprove,
+  goal, state, status, onTab, onApprove, previews = [], openPreviewId = null, onTogglePreview,
 }: {
   goal: string; state: FoldedState; status: string; onTab: (t: string) => void;
   onApprove: (id: string, decision: 'approved' | 'rejected') => void;
+  previews?: PreviewItem[]; openPreviewId?: string | null; onTogglePreview?: (id: string) => void;
 }) {
   const pr = state.artifacts.find((a) => a.kind === 'pr');
   const showThinking = (status === 'executing' || status === 'planning') && state.thread[state.thread.length - 1]?.kind !== 'act';
@@ -103,6 +106,9 @@ export function ThreadPanel({
       <div className="umsg"><div className="bubble">{goal}</div></div>
       <div className="statusline">{status === 'done' || status === 'failed' ? 'Worked for ' : 'Working for '}{fmtDuration(state.elapsedSec)}</div>
       {state.thread.map((item, i) => <ThreadEntry key={i} item={item} onTab={onTab} onApprove={onApprove} />)}
+      {onTogglePreview && previews.map((p) => (
+        <ArtifactCard key={p.id} item={p} open={openPreviewId === p.id} onToggle={() => onTogglePreview(p.id)} />
+      ))}
       {pr && (
         <div className="pr-card">
           <span className="ico-sq"><Icon name="branch" /></span>
