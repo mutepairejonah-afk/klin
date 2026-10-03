@@ -23,7 +23,31 @@ async function clerkToken(): Promise<string | undefined> {
   try { return await clerk.session.getToken(); } catch { return undefined; }
 }
 
-async function http<T>(path: string, init?: RequestInit): Promise<T> {
+const inFlightGetRequests = new Map<string, Promise<unknown>>();
+
+function http<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? 'GET').toUpperCase();
+  if (method !== 'GET') return performHttp<T>(path, init);
+
+  // Sidebar and page components can request the same data at startup. Share
+  // only an in-flight request (never cache responses) to avoid duplicate
+  // network work without serving stale data after a mutation.
+  const sessionId = (window as any).Clerk?.session?.id ?? 'anonymous';
+  const headers = init?.headers ? JSON.stringify(init.headers) : '';
+  const key = `${sessionId}:${path}:${headers}`;
+  const existing = inFlightGetRequests.get(key);
+  if (existing) return existing as Promise<T>;
+
+  const request = performHttp<T>(path, init);
+  inFlightGetRequests.set(key, request);
+  const cleanup = () => {
+    if (inFlightGetRequests.get(key) === request) inFlightGetRequests.delete(key);
+  };
+  void request.then(cleanup, cleanup);
+  return request;
+}
+
+async function performHttp<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await clerkToken();
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',

@@ -74,7 +74,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="card pad" style={{ marginTop: 14 }}>
+        <div key={s ? 'profile-loaded' : 'profile-loading'} className="card pad" style={{ marginTop: 14 }}>
           <h3>Profile</h3>
           <div style={{ display: 'flex', gap: 24, marginTop: 12 }}>
             <div className="field" style={{ flex: 1 }}><label>Name</label><input className="input w" placeholder="Your name" defaultValue={s?.name} onBlur={(e) => save({ name: e.target.value })} /></div>
@@ -122,7 +122,7 @@ export default function Settings() {
           )}
         </div>
 
-        <div className="card pad" style={{ marginTop: 14 }}>
+        <div key={s ? 'preferences-loaded' : 'preferences-loading'} className="card pad" style={{ marginTop: 14 }}>
           <h3>Coding preferences</h3>
           <div style={{ display: 'flex', gap: 24 }}>
             <div className="field" style={{ flex: 1 }}><label>Test framework</label>

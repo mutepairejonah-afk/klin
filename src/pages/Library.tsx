@@ -16,8 +16,20 @@ export default function Library() {
   const [params, setParams] = useSearchParams();
   const kind = (params.get('k') as ArtifactKind | 'all') || 'all';
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => { artifactsApi.list(kind === 'all' ? undefined : kind).then(setArtifacts).catch(() => setArtifacts([])); }, [kind]);
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError(false);
+    artifactsApi.list(kind === 'all' ? undefined : kind)
+      .then((items) => { if (active) setArtifacts(items); })
+      .catch(() => { if (active) { setArtifacts([]); setLoadError(true); } })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [kind, retryCount]);
 
   return (
     <>
@@ -26,7 +38,9 @@ export default function Library() {
       <div className="wrap">
         <div className="pg-h"><div><h1 className="h1">Library</h1><p className="sub">Everything the agent has produced: PRs, diffs, schemas, files, screenshots, previews and reports.</p></div></div>
         <div className="tabs">{KINDS.map((k) => <button key={k.key} className={`tab ${kind === k.key ? 'on' : ''}`} onClick={() => setParams(k.key === 'all' ? {} : { k: k.key })}>{k.label}</button>)}</div>
-        {artifacts.length === 0
+        {loading ? <div className="muted" role="status">Loading artifacts…</div>
+          : loadError ? <div className="card empty" role="alert"><b>Couldn’t load artifacts</b><p className="muted">Check your connection and try again.</p><button className="btn sm" onClick={() => setRetryCount((count) => count + 1)}>Retry</button></div>
+          : artifacts.length === 0
           ? <div className="card empty"><div className="ico-sq"><Icon name="library" /></div><b>Nothing here yet</b>Artifacts of this type will appear after the agent creates one.</div>
           : (
             <div className="grid g3">

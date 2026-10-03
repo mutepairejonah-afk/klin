@@ -14,6 +14,7 @@ const NAV_WORK = [
   { to: '/sessions', label: 'Sessions', icon: 'agent' },
   { to: '/agent', label: 'AI Agent', icon: 'skills' },
   { to: '/scheduled', label: 'Scheduled', icon: 'clock' },
+  { to: '/library', label: 'Library', icon: 'library' },
 ];
 const NAV_SETUP = [
   { to: '/connections', label: 'Connectors', icon: 'plugins' },

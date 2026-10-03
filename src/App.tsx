@@ -27,6 +27,7 @@ const Usage = lazy(() => import('@/pages/Usage'));
 const Audit = lazy(() => import('@/pages/Audit'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const Memory = lazy(() => import('@/pages/Memory'));
+const Library = lazy(() => import('@/pages/Library'));
 const SignIn = lazy(() => import('@/pages/SignIn'));
 const Share = lazy(() => import('@/pages/Share'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
@@ -63,6 +64,7 @@ export default function App() {
           <Route path="/audit" element={<Audit />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/memory" element={<Memory />} />
+          <Route path="/library" element={<Library />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
