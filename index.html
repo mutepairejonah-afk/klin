@@ -3,12 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <meta name="theme-color" content="#0a0a0a" />
     <title>Kiln — autonomous coding agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fonts load without blocking first paint; the system stack shows until they arrive. -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400&display=swap" onload="this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400&display=swap" /></noscript>
+    <style>
+      /* Critical CSS: paint something on-brand immediately, before any JS arrives. */
+      html,body{margin:0;height:100%;background:#0a0a0a;color:#ececec;font-family:"DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+      @media (prefers-color-scheme:light){html:not([data-theme="dark"]),html:not([data-theme="dark"]) body{background:#fff;color:#171717}}
+      #splash{position:fixed;inset:0;display:grid;place-items:center;transition:opacity .25s ease}
+      #splash div{display:flex;flex-direction:column;align-items:center;gap:14px}
+      #splash svg{width:44px;height:44px;animation:sp 1.4s ease-in-out infinite}
+      #splash span{font-family:"Instrument Serif",Georgia,serif;font-size:30px;letter-spacing:.2px}
+      @keyframes sp{0%,100%{opacity:.45;transform:scale(.96)}50%{opacity:1;transform:scale(1)}}
+      #root:not(:empty)+#splash{opacity:0;pointer-events:none}
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="splash" aria-hidden="true"><div>
+      <svg viewBox="0 0 32 32" fill="none" stroke="#ff7a45" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="25" height="25" rx="8"/><path d="m11 12.5 5 3.5-5 3.5"/></svg>
+      <span>Kiln</span>
+    </div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -7,6 +7,18 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') }
   },
+  build: {
+    target: 'es2020',
+    rollupOptions: {
+      output: {
+        // Stable vendor chunks cache across deploys; app code stays small.
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom', 'zustand'],
+          clerk: ['@clerk/clerk-react'],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     // Local sandbox development: the frontend keeps using /api while Vite

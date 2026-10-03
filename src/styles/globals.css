@@ -685,3 +685,68 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .dp-frame iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
 .dp-code { flex: 1; margin: 0; padding: 16px 18px; overflow: auto; background: var(--code); color: var(--text); font-size: 12.5px; line-height: 1.6; white-space: pre; tab-size: 2; }
 @media (prefers-reduced-motion: reduce) { .dp-frame { transition: none; } }
+
+/* =====================================================================
+   Polish pass: ember accent, softer surfaces, calmer chrome
+   ===================================================================== */
+:root { --accent:#ff7a45; --accent-2:#ff4d6d; --accent-grad:linear-gradient(135deg,#ff8a4c 0%,#ff4d6d 100%); --ring:0 0 0 3px color-mix(in srgb,var(--accent) 28%,transparent); }
+
+body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+:focus-visible { outline: 0; box-shadow: var(--ring); border-radius: 10px; }
+
+/* Primary actions get the accent instead of flat grey */
+.btn.pri, .send:not(:disabled) { background: var(--accent-grad); color: #fff; border-color: transparent; box-shadow: 0 6px 18px color-mix(in srgb,var(--accent-2) 30%,transparent); }
+.btn.pri:hover { filter: brightness(1.06); background: var(--accent-grad); }
+.btn { transition: background .15s ease, filter .15s ease, transform .1s ease; }
+.btn:active { transform: translateY(1px); }
+.spin { border-color: color-mix(in srgb,var(--accent) 30%,transparent); border-top-color: var(--accent); }
+
+/* Sidebar: accent marker and a soft active pill */
+.nav a { transition: background .15s ease; }
+.nav a.on { background: color-mix(in srgb,var(--accent) 12%,transparent); box-shadow: none; }
+.nav a.on svg { color: var(--accent); }
+.brand svg { stroke: var(--accent); }
+
+/* Header: the Upgrade pill reads as a button, not a ghost */
+.header { background: color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 10; }
+
+/* Home: a warm glow behind the hero + livelier composer */
+.hero-wrap { position: relative; }
+.hero-wrap::before { content:""; position:absolute; left:50%; top:-40px; width:min(640px,90%); height:260px; transform:translateX(-50%); background: radial-gradient(closest-side, color-mix(in srgb,var(--accent) 22%,transparent), transparent); filter: blur(30px); z-index:-1; pointer-events:none; }
+.composer { border-radius: 22px; transition: border-color .15s ease, box-shadow .15s ease; }
+.composer:focus-within { border-color: color-mix(in srgb,var(--accent) 55%,var(--card-line)); box-shadow: var(--shadow), var(--ring); }
+.card { border-radius: 18px; }
+
+/* Session phases + roles */
+.ph.now::before { background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb,var(--accent) 20%,transparent); }
+.ph.now { color: var(--text); }
+.role-chip.on { border-color: color-mix(in srgb,var(--accent) 55%,transparent); background: color-mix(in srgb,var(--accent) 12%,transparent); }
+.role-chip.on i { background: var(--accent); }
+.phases, .ctabs { scrollbar-width: none; }
+.phases::-webkit-scrollbar, .ctabs::-webkit-scrollbar { display: none; }
+.ctabs { mask-image: linear-gradient(90deg,#000 calc(100% - 28px),transparent); }
+.ctab.on { background: color-mix(in srgb,var(--accent) 12%,transparent); border-color: color-mix(in srgb,var(--accent) 35%,var(--card-line)); box-shadow: none; }
+.ctab.on svg { color: var(--accent); }
+
+/* Chat */
+.umsg .bubble { border-radius: 18px 18px 6px 18px; }
+.act { border-radius: 14px; transition: border-color .15s ease, background .15s ease; }
+.act:hover { border-color: color-mix(in srgb,var(--accent) 40%,var(--card-line)); }
+
+/* Workspace panel: honest status colours (a stopped run was showing green) */
+.comp { box-shadow: 0 24px 60px rgba(0,0,0,.28); }
+.comp-status.bad { color: var(--red); } .comp-status.bad i { background: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb,var(--red) 14%,transparent); }
+.comp-status.ok { color: var(--green); }
+.empty { padding: 56px 24px; color: var(--text-3); text-align: center; }
+.empty b { display: block; color: var(--text); font-weight: 500; font-size: 17px; margin: 10px 0 4px; }
+.empty > svg { width: 30px; height: 30px; padding: 12px; box-sizing: content-box; border-radius: 16px; background: var(--active); color: var(--text-2); }
+
+/* Friendly error card */
+.errcard { display: flex; gap: 12px; padding: 14px 16px; margin: 0 0 16px; border-radius: 16px; border: 1px solid color-mix(in srgb,var(--red) 35%,var(--card-line)); background: color-mix(in srgb,var(--red) 6%,var(--card)); }
+.errcard > svg { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.errcard .eb { min-width: 0; }
+.errcard b { font-weight: 600; font-size: 15.5px; }
+.errcard p { margin: 4px 0 0; color: var(--text-2); font-size: 14.5px; line-height: 1.5; }
+.errcard details { margin-top: 10px; }
+.errcard summary { cursor: pointer; color: var(--text-3); font-size: 13px; }
+.errcard pre { margin: 8px 0 0; max-height: 160px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; color: var(--text-3); background: var(--code); border: 1px solid var(--card-line); border-radius: 10px; padding: 10px 12px; }

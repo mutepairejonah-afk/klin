@@ -1,8 +1,11 @@
-import { useEffect, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, RedirectToSignIn, useAuth as useClerkAuth } from '@clerk/clerk-react';
 
 function RequireAuth({ children }: { children: ReactNode }) {
+  const { isLoaded } = useClerkAuth();
+  // Clerk's script loads async; show the app frame right away instead of a blank page.
+  if (!isLoaded) return <AppFrameSkeleton />;
   return (
     <>
       <SignedIn>{children}</SignedIn>
@@ -11,21 +14,23 @@ function RequireAuth({ children }: { children: ReactNode }) {
   );
 }
 import Shell from '@/components/Shell';
+import { AppFrameSkeleton, PageSkeleton } from '@/components/Skeleton';
 import { Toast } from '@/components/Toast';
 import { useUiStore } from '@/lib/store';
-import { SessionView } from '@/pages/SessionView';
-import Home from '@/pages/Home';
-import Sessions from '@/pages/Sessions';
-import AiAgent from '@/pages/AiAgent';
-import Connections from '@/pages/Connections';
-import Scheduled from '@/pages/Scheduled';
-import Usage from '@/pages/Usage';
-import Audit from '@/pages/Audit';
-import Settings from '@/pages/Settings';
-import Memory from '@/pages/Memory';
-import SignIn from '@/pages/SignIn';
-import Share from '@/pages/Share';
-import NotFound from '@/pages/NotFound';
+
+const Home = lazy(() => import('@/pages/Home'));
+const Sessions = lazy(() => import('@/pages/Sessions'));
+const AiAgent = lazy(() => import('@/pages/AiAgent'));
+const Connections = lazy(() => import('@/pages/Connections'));
+const Scheduled = lazy(() => import('@/pages/Scheduled'));
+const Usage = lazy(() => import('@/pages/Usage'));
+const Audit = lazy(() => import('@/pages/Audit'));
+const Settings = lazy(() => import('@/pages/Settings'));
+const Memory = lazy(() => import('@/pages/Memory'));
+const SignIn = lazy(() => import('@/pages/SignIn'));
+const Share = lazy(() => import('@/pages/Share'));
+const NotFound = lazy(() => import('@/pages/NotFound'));
+const SessionView = lazy(() => import('@/pages/SessionView').then((m) => ({ default: m.SessionView })));
 
 export default function App() {
   const theme = useUiStore((s) => s.theme);
@@ -41,6 +46,7 @@ export default function App() {
 
   return (
     <>
+      <Suspense fallback={<PageSkeleton />}>
       <Routes>
         <Route path="/signin" element={<SignIn />} />
         <Route path="/share/:token" element={<Share />} />
@@ -60,6 +66,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
+      </Suspense>
       <Toast />
     </>
   );

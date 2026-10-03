@@ -26,6 +26,7 @@ export function RoleBar({ state, status }: { state: FoldedState; status: string 
           </span>
         ))}
       </div>
+      {status !== 'done' && status !== 'failed' && (
       <div className="roles">
         {ROLE_ORDER.map((r) => (
           <span key={r} className={`role-chip ${state.role === r && status !== 'done' && status !== 'failed' ? 'on' : ''}`}>
@@ -33,6 +34,7 @@ export function RoleBar({ state, status }: { state: FoldedState; status: string 
           </span>
         ))}
       </div>
+      )}
     </div>
   );
 }
@@ -59,11 +61,19 @@ function ThreadEntry({ item, onTab, onApprove }: {
       ))}</div>
     </div>
   );
-  if (item.kind === 'error') return (
-    <div className="verify" style={{ borderColor: 'color-mix(in srgb, var(--red) 35%, var(--card-line))', background: 'color-mix(in srgb, var(--red) 5%, var(--card))' }}>
-      <div className="vh"><Icon name="xc" className="st-bad" /><b style={{ fontWeight: 500 }}>{item.message}</b></div>
-    </div>
-  );
+  if (item.kind === 'error') {
+    const f = friendlyError(item.message);
+    return (
+      <div className="errcard">
+        <Icon name="alert" className="st-bad" />
+        <div className="eb">
+          <b>{f.title}</b>
+          <p>{f.hint}</p>
+          {f.raw && <details><summary>Technical details</summary><pre>{f.raw}</pre></details>}
+        </div>
+      </div>
+    );
+  }
   if (item.kind === 'approval') {
     const { approval: a, decision } = item;
     return (
@@ -135,3 +145,15 @@ const MARK_INLINE = (
       <path d="m11 12.5 5 3.5-5 3.5" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></svg>
   </span>
 );
+
+function friendlyError(message: string): { title: string; hint: string; raw?: string } {
+  const m = message || '';
+  if (/429|rate.?limit|quota/i.test(m)) {
+    return { title: 'The AI provider is rate-limited', hint: 'The free model quota is used up for now. Try again in a few minutes, or add credits / another provider in Settings.', raw: m };
+  }
+  if (/All AI providers failed/i.test(m)) {
+    return { title: 'No AI provider could answer', hint: 'Every configured model failed. Check the provider keys and model names in Settings, then retry.', raw: m };
+  }
+  if (m.length > 140) return { title: 'Something went wrong', hint: 'The agent stopped before finishing.', raw: m };
+  return { title: m || 'Something went wrong', hint: 'The agent stopped before finishing.' };
+}

@@ -33,7 +33,7 @@ export function ComputerPanel({
       <div className="comp-h">
         <span className="window-dots" aria-hidden="true"><i /><i /><i /></span>
         <span className="ttl"><Icon name="monitor" />Agent workspace</span>
-        <span className="comp-status"><i />{status === 'done' ? 'Complete' : status === 'failed' ? 'Stopped' : 'Live'}</span>
+        <span className={`comp-status ${status === 'failed' ? 'bad' : status === 'done' ? 'ok' : 'live'}`}><i />{status === 'done' ? 'Complete' : status === 'failed' ? 'Stopped' : 'Live'}</span>
         <span style={{ flex: 1 }} />
         {onMinimize && (
           <button className="icon-btn hide-sm" aria-label={minimized ? 'Restore' : 'Minimize'} onClick={onMinimize}>

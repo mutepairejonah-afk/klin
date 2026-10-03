@@ -131,3 +131,33 @@ export function SessionViewSkeleton() {
     </div>
   );
 }
+
+/** Full app frame (sidebar + header) shown while auth boots, so the first paint is never blank. */
+export function AppFrameSkeleton() {
+  return (
+    <div className="app">
+      <aside className="sidebar" aria-hidden="true">
+        <div style={{ padding: 18 }}><Skeleton width={96} height={26} radius={8} /></div>
+        <div style={{ padding: '10px 14px', display: 'grid', gap: 12 }}>
+          {[70, 56, 62, 66, 48].map((w, i) => <Skeleton key={i} width={`${w}%`} height={16} />)}
+        </div>
+      </aside>
+      <main className="main">
+        <header className="header"><Skeleton width={34} height={34} radius={9} /></header>
+        <div className="page"><PageSkeleton /></div>
+      </main>
+    </div>
+  );
+}
+
+/** Generic content placeholder used while a route chunk downloads. */
+export function PageSkeleton() {
+  return (
+    <div className="wrap" aria-busy="true" aria-label="Loading">
+      <Skeleton width="38%" height={34} radius={10} style={{ marginBottom: 22 }} />
+      <div className="card" style={{ padding: 18, display: 'grid', gap: 14 }}>
+        <Skeleton width="82%" /><Skeleton width="64%" /><Skeleton width="72%" />
+      </div>
+    </div>
+  );
+}
