@@ -120,6 +120,8 @@ export interface Connector {
   scopes: string[];
   connected: boolean;
   oauth?: boolean; // true = real OAuth flow; false = unavailable until that provider is implemented
+  oauthConfigured?: boolean; // false = the server needs provider credentials before OAuth can start
+  githubExecutionConfigured?: boolean; // false = sandbox worker or outbound GitHub network is not enabled
   meta?: { login?: string; avatarUrl?: string } | string;
   lastUsedAt?: string;
 }

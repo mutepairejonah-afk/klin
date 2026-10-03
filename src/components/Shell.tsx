@@ -9,6 +9,7 @@ export default function Shell() {
   const { sidebarCollapsed, mobileSidebarOpen, setMobileSidebarOpen } = useUiStore();
   const location = useLocation();
   const toast = useToast((s) => s.show);
+  const isSessionView = /^\/s\/[^/]+(?:\/replay)?$/.test(location.pathname);
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => { setMobileSidebarOpen(false); }, [location.pathname]);
@@ -35,7 +36,7 @@ export default function Shell() {
             </button>
           </div>
         </header>
-        <div className="page">
+        <div className={`page${isSessionView ? ' fill' : ''}`}>
           <Outlet />
         </div>
       </main>

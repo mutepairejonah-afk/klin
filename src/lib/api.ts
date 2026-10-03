@@ -82,6 +82,7 @@ export const sessionsApi = {
   delete: (id: string) => http<void>(`/sessions/${id}`, { method: 'DELETE' }),
   create: (input: CreateSessionInput) =>
     http<Session>('/sessions', { method: 'POST', body: JSON.stringify(input) }),
+  cancel: (id: string) => http<{ accepted: boolean }>(`/sessions/${id}/cancel`, { method: 'POST' }),
   pause: (id: string) => http<void>(`/sessions/${id}/pause`, { method: 'POST' }),
   resume: (id: string) => http<void>(`/sessions/${id}/resume`, { method: 'POST' }),
   sendMessage: (id: string, message: string) =>
@@ -177,7 +178,11 @@ export const connectionsApi = {
   disconnect: (id: string) => http<void>(`/connections/${id}`, { method: 'DELETE' }),
   githubOAuthUrl: () => http<{ url: string }>('/connections/github/start'),
   githubRepos: () => http<{ fullName: string; private: boolean; defaultBranch: string; updatedAt: string }[]>('/connections/github/repos'),
-  githubBranches: (fullName: string) => http<string[]>(`/connections/github/repos/${fullName}/branches`),
+  githubBranches: (fullName: string) => {
+    const [owner, repo] = fullName.split('/');
+    if (!owner || !repo || fullName.split('/').length !== 2) return Promise.reject(new Error('Invalid GitHub repository name'));
+    return http<string[]>(`/connections/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches`);
+  },
 };
 export const secretsApi = {
   list: () => http<Secret[]>('/secrets'),

@@ -23,12 +23,14 @@ export function RepoPicker({ repo, connected, onPick }: { repo: string; connecte
   const [repos, setRepos] = useState<Repo[] | null>(null);
   const [err, setErr] = useState('');
   const [q, setQ] = useState('');
+  const [reload, setReload] = useState(0);
   const ref = useOutsideClose(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open || repos || !connected) return;
-    connectionsApi.githubRepos().then(setRepos).catch(() => setErr('Could not load repos — check the GitHub connection'));
-  }, [open, connected, repos]);
+    setErr('');
+    connectionsApi.githubRepos().then((items) => { setRepos(items); setErr(''); }).catch(() => setErr('Could not load repos — check the GitHub connection'));
+  }, [open, connected, repos, reload]);
 
   if (!connected) {
     return (
@@ -46,7 +48,7 @@ export function RepoPicker({ repo, connected, onPick }: { repo: string; connecte
       {open && (
         <div className="menu repo-menu" role="menu">
           <input autoFocus placeholder="Search repos…" value={q} onChange={(e) => setQ(e.target.value)} />
-          {err && <div className="mh">{err}</div>}
+          {err && <div className="repo-error"><span>{err}</span><button type="button" onClick={() => { setRepos(null); setErr(''); setReload((n) => n + 1); }}><Icon name="retry" />Retry</button></div>}
           {!repos && !err && <div className="mh">Loading…</div>}
           {repos && filtered.length === 0 && <div className="mh">No matching repos</div>}
           {filtered.map((r) => (
@@ -67,13 +69,14 @@ export function BranchPicker({ repo, branch, onPick }: { repo: string; branch: s
   const [open, setOpen] = useState(false);
   const [branches, setBranches] = useState<string[] | null>(null);
   const [err, setErr] = useState('');
+  const [reload, setReload] = useState(0);
   const ref = useOutsideClose(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open || !repo) return;
     setBranches(null); setErr('');
-    connectionsApi.githubBranches(repo).then(setBranches).catch(() => setErr('Could not load branches'));
-  }, [open, repo]);
+    connectionsApi.githubBranches(repo).then((items) => { setBranches(items); setErr(''); }).catch(() => setErr('Could not load branches'));
+  }, [open, repo, reload]);
 
   if (!repo) return <span className="pill" style={{ opacity: 0.5 }}><Icon name="branch" />Pick a repo first</span>;
 
@@ -82,7 +85,7 @@ export function BranchPicker({ repo, branch, onPick }: { repo: string; branch: s
       <button type="button" className="pill" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}><Icon name="branch" />{branch || 'Branch'}</button>
       {open && (
         <div className="menu repo-menu" role="menu">
-          {err && <div className="mh">{err}</div>}
+          {err && <div className="repo-error"><span>{err}</span><button type="button" onClick={() => { setBranches(null); setErr(''); setReload((n) => n + 1); }}><Icon name="retry" />Retry</button></div>}
           {!branches && !err && <div className="mh">Loading…</div>}
           {branches?.map((b) => (
             <button key={b} role="menuitem" onClick={() => { onPick(b); setOpen(false); }}>{b}</button>

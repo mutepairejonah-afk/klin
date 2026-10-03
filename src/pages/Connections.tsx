@@ -110,12 +110,12 @@ export default function Connections() {
 
   const byId = useMemo(() => new Map(connectors.map((connector) => [connector.id, connector])), [connectors]);
   const connectedCount = connectors.filter((connector) => connector.connected).length;
-  const readyCount = CONNECTOR_CATALOG.filter((item) => byId.get(item.id)?.oauth && !byId.get(item.id)?.connected).length;
+  const readyCount = CONNECTOR_CATALOG.filter((item) => byId.get(item.id)?.oauth && byId.get(item.id)?.oauthConfigured !== false && !byId.get(item.id)?.connected).length;
   const filteredCatalog = CONNECTOR_CATALOG.filter((item) => {
     const live = byId.get(item.id);
     const matchesFilter = filter === 'all'
       || (filter === 'connected' && !!live?.connected)
-      || (filter === 'ready' && !!live?.oauth && !live.connected)
+      || (filter === 'ready' && !!live?.oauth && live.oauthConfigured !== false && !live.connected)
       || (filter === 'soon' && !!live && !live.oauth);
     const matchesQuery = `${item.name} ${item.description} ${item.scopes.join(' ')}`.toLowerCase().includes(query.trim().toLowerCase());
     return matchesFilter && matchesQuery;
@@ -213,15 +213,16 @@ export default function Connections() {
                   const live = byId.get(item.id);
                   const statusKnown = !!live;
                   const connected = !!live?.connected;
-                  const ready = !!live?.oauth;
+                  const ready = !!live?.oauth && live.oauthConfigured !== false;
+                  const needsSetup = !!live?.oauth && live.oauthConfigured === false;
                   const meta = live?.meta;
                   const account = typeof meta === 'string' ? meta : meta?.login ? `Signed in as ${meta.login}` : 'Account connected';
                   return (
                     <article className={`integration-card ${connected ? 'is-connected' : ''}`} key={item.id}>
                       <div className="integration-card-top">
                         <ConnectorMark id={item.id} name={item.name} />
-                        <span className={`connection-state ${connected ? 'state-connected' : !statusKnown ? 'state-unknown' : ready ? 'state-ready' : 'state-soon'}`}>
-                          <i />{connected ? 'Connected' : !statusKnown ? 'Status unavailable' : ready ? 'Ready to connect' : 'In development'}
+                        <span className={`connection-state ${connected ? 'state-connected' : !statusKnown ? 'state-unknown' : needsSetup ? 'state-soon' : ready ? 'state-ready' : 'state-soon'}`}>
+                          <i />{connected ? 'Connected' : !statusKnown ? 'Status unavailable' : needsSetup ? 'Server setup needed' : ready ? 'Ready to connect' : 'In development'}
                         </span>
                       </div>
                       <h2>{item.name}</h2>
@@ -241,6 +242,12 @@ export default function Connections() {
                         </div>
                       )}
 
+                      {connected && item.id === 'github' && live?.githubExecutionConfigured === false && (
+                        <div className="connector-runtime-notice" role="status">
+                          GitHub sign-in is active, but repository jobs are not enabled on this server. Configure <code>KILN_EXECUTION_ENABLED=true</code>, <code>ORCHESTRATOR_MODE=coding</code>, and an outbound-capable sandbox runtime/network.
+                        </div>
+                      )}
+
                       <div className="integration-card-footer">
                         {connected ? (
                           <>
@@ -253,6 +260,11 @@ export default function Connections() {
                           <>
                             <span className="connected-footnote">Check connection status to continue</span>
                             <button type="button" className="btn sm coming-button" disabled>Unavailable</button>
+                          </>
+                        ) : needsSetup ? (
+                          <>
+                            <span className="connected-footnote">Add GitHub OAuth credentials to the backend</span>
+                            <button type="button" className="btn sm coming-button" disabled>Needs setup</button>
                           </>
                         ) : ready ? (
                           <>

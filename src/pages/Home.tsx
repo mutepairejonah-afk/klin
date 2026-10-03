@@ -30,6 +30,7 @@ export default function Home() {
 
   async function start() {
     const goal = draft.trim();
+    if (starting) return;
     if (!goal) { toast('Describe the job first'); return; }
     setStarting(true);
     try {
@@ -86,7 +87,7 @@ export default function Home() {
             </div>
             <div className="r">
               <button className="mic" aria-label="Voice input" onClick={() => toast('Voice input')}><Icon name="mic" /></button>
-              <button className="send" aria-label="Start task" disabled={starting} onClick={start}><Icon name="up" /></button>
+              <button className="send" aria-label={starting ? 'Starting task' : 'Start task'} disabled={starting || !draft.trim()} onClick={start}>{starting ? <span className="spin" /> : <Icon name="up" />}</button>
             </div>
           </div>
         </div>

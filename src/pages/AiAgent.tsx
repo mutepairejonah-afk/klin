@@ -63,6 +63,7 @@ export default function AiAgent() {
 
   async function send() {
     const goal = draft.trim();
+    if (starting) return;
     if (!goal || goal === '/') { toast('Describe what you want the agent to do'); return; }
     setStarting(true);
     try {
@@ -82,7 +83,7 @@ export default function AiAgent() {
     <>
       <HeaderLeft><span className="h-title">AI Agent</span></HeaderLeft>
       <HeaderRight />
-      <div className="home">
+      <div className="home agent-home">
         <div className="hero-wrap">
           <span className="eyebrow"><i />Autonomous coding agent</span>
           <h1 className="hero">Talk to the <em>agent</em></h1>
@@ -154,7 +155,7 @@ export default function AiAgent() {
             </div>
             <div className="r">
               <button className="mic" aria-label="Voice input" onClick={() => toast('Voice input')}><Icon name="mic" /></button>
-              <button className="send" aria-label="Send" disabled={starting} onClick={send}><Icon name="up" /></button>
+              <button className="send" aria-label={starting ? 'Starting task' : 'Start task'} disabled={starting || !draft.trim()} onClick={send}>{starting ? <span className="spin" /> : <Icon name="up" />}</button>
             </div>
           </div>
         </div>
