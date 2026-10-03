@@ -5,18 +5,23 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App';
 import './styles/globals.css';
 import { installLinkPreviewGuard } from './lib/hideLinkPreview';
+import AuthConfigurationNotice from './components/AuthConfigurationNotice';
 
 installLinkPreviewGuard();
 
 const clerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
-if (!clerkKey) console.error('VITE_CLERK_PUBLISHABLE_KEY is not set — sign-in will not work.');
+const hasClerkKey = Boolean(clerkKey?.trim());
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={clerkKey ?? ''}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </ClerkProvider>
+    {hasClerkKey ? (
+      <ClerkProvider publishableKey={clerkKey!}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ClerkProvider>
+    ) : (
+      <AuthConfigurationNotice />
+    )}
   </React.StrictMode>,
 );
