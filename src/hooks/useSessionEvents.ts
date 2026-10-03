@@ -1,7 +1,6 @@
 // Drives a session view in one of two modes:
-//  - live:   opens an SSE subscription and appends events as they arrive
-//  - replay: fetches the full event log once, then a `cursor` (driven by a
-//            scrubber) decides how many events are folded into state
+//  - live:   merges persisted history with authenticated SSE updates
+//  - replay: fetches the event log once, then a cursor controls the fold
 // Both modes render through the same foldEvents() — see lib/sessionReducer.ts.
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { sessionsApi, shareApi } from '@/lib/api';
@@ -10,35 +9,54 @@ import type { SessionEvent } from '@/lib/types';
 
 interface Options {
   mode: 'live' | 'replay' | 'share';
-  shareToken?: string; // required when mode === 'share'
+  shareToken?: string;
+}
+
+function mergeBySequence(current: SessionEvent[], incoming: SessionEvent[]) {
+  const bySeq = new Map<number, SessionEvent>();
+  for (const event of [...current, ...incoming]) bySeq.set(event.seq, event);
+  return [...bySeq.values()].sort((a, b) => a.seq - b.seq);
 }
 
 export function useSessionEvents(sessionId: string, opts: Options) {
   const [events, setEvents] = useState<SessionEvent[]>([]);
-  const [cursor, setCursor] = useState(0); // replay/share only
+  const [cursor, setCursor] = useState(0);
   const [connected, setConnected] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const unsubRef = useRef<() => void>();
 
   useEffect(() => {
+    let active = true;
     setEvents([]); setCursor(0); setLoadError(null);
     if (opts.mode === 'live') {
       unsubRef.current = sessionsApi.subscribe(
         sessionId,
-        (e) => {
+        (event) => {
+          if (!active) return;
           setConnected(true);
-          setEvents((prev) => prev.some((item) => item.seq === e.seq) ? prev : [...prev, e]);
+          setEvents((prev) => mergeBySequence(prev, [event]));
         },
         () => setConnected(false),
       );
-      return () => { setConnected(false); unsubRef.current?.(); };
+      // History is fetched alongside SSE so refreshes restore the whole thread;
+      // sequence merging handles events that arrive while replay is in flight.
+      sessionsApi.replay(sessionId)
+        .then((history) => { if (active) setEvents((prev) => mergeBySequence(prev, history)); })
+        .catch((err) => { if (active) setLoadError(String(err)); });
+      return () => { active = false; setConnected(false); unsubRef.current?.(); };
     }
+
     const fetcher = opts.mode === 'share' && opts.shareToken
       ? shareApi.replay(opts.shareToken)
       : sessionsApi.replay(sessionId);
     fetcher
-      .then((log) => { setEvents(log); setCursor(log.length ? log.length - 1 : 0); })
-      .catch((err) => setLoadError(String(err)));
+      .then((log) => {
+        if (!active) return;
+        setEvents(log);
+        setCursor(log.length ? log.length - 1 : 0);
+      })
+      .catch((err) => { if (active) setLoadError(String(err)); });
+    return () => { active = false; };
   }, [sessionId, opts.mode, opts.shareToken]);
 
   const visible = opts.mode === 'live' ? events : events.slice(0, cursor + 1);
@@ -49,9 +67,16 @@ export function useSessionEvents(sessionId: string, opts: Options) {
     sessionsApi.resolveApproval(sessionId, approvalId, decision).catch((err) => setLoadError(String(err)));
   }, [sessionId, opts.mode]);
 
-  const sendMessage = useCallback((message: string) => {
-    if (opts.mode !== 'live') return;
-    sessionsApi.sendMessage(sessionId, message).catch((err) => setLoadError(String(err)));
+  const sendMessage = useCallback(async (message: string) => {
+    if (opts.mode !== 'live') return false;
+    setLoadError(null);
+    try {
+      await sessionsApi.sendMessage(sessionId, message);
+      return true;
+    } catch (err) {
+      setLoadError(String(err));
+      return false;
+    }
   }, [sessionId, opts.mode]);
 
   return {

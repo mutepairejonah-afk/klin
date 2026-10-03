@@ -61,7 +61,7 @@ export const sessionsApi = {
   pause: (id: string) => http<void>(`/sessions/${id}/pause`, { method: 'POST' }),
   resume: (id: string) => http<void>(`/sessions/${id}/resume`, { method: 'POST' }),
   sendMessage: (id: string, message: string) =>
-    http<void>(`/sessions/${id}/message`, { method: 'POST', body: JSON.stringify({ message }) }),
+    http<{ accepted: boolean }>(`/sessions/${id}/message`, { method: 'POST', body: JSON.stringify({ message }) }),
   resolveApproval: (id: string, approvalId: string, decision: 'approved' | 'rejected') =>
     http<void>(`/sessions/${id}/approvals/${approvalId}`, {
       method: 'POST', body: JSON.stringify({ decision }),

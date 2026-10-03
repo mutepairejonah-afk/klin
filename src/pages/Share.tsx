@@ -49,7 +49,7 @@ export default function Share() {
       <div className={`sess-host sess ${showComp ? 'show-comp' : ''}`}>
         <section className="thread-col">
           <RoleBar state={state} status={status} />
-          <div className="thr-scroll"><ThreadPanel goal={meta.goal} state={state} status={status} onTab={setTab} onApprove={() => {}} extraMessages={[]} /></div>
+          <div className="thr-scroll"><ThreadPanel goal={meta.goal} state={state} status={status} onTab={setTab} onApprove={() => {}} /></div>
         </section>
         <section className="comp-col">
           <div className="comp"><ComputerPanel state={state} status={status} activeTab={tab} onTab={setTab} events={visibleEvents} onSelectFile={() => {}} /></div>

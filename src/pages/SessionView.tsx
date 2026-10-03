@@ -25,7 +25,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const [follow, setFollow] = useState(true);
   const [showCompMobile, setShowCompMobile] = useState(false);
   const [message, setMessage] = useState('');
-  const [extra, setExtra] = useState<string[]>([]);
+  const [sending, setSending] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -52,11 +52,14 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
     setFollow(true);
     setShowCompMobile(true);
   }
-  function send() {
-    if (!message.trim()) return;
-    if (mode === 'live') sendMessage(message.trim());
-    setExtra((e) => [...e, message.trim()]);
-    setMessage('');
+  async function send() {
+    const text = message.trim();
+    if (!text || sending || mode !== 'live') return;
+    setSending(true);
+    const accepted = await sendMessage(text);
+    if (accepted) setMessage('');
+    else toast('Message was not sent. Check the session and try again.');
+    setSending(false);
   }
 
   if (metaError) {
@@ -96,7 +99,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
       <section className="thread-col">
         {hasComp && <RoleBar state={state} status={status} />}
         <div className="thr-scroll">
-          <ThreadPanel goal={meta.goal} state={state} status={status} onTab={selectTab} onApprove={approve} extraMessages={extra} />
+          <ThreadPanel goal={meta.goal} state={state} status={status} onTab={selectTab} onApprove={approve} />
         </div>
         {mode === 'live' && (
           <div className="dock">
@@ -104,9 +107,10 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
               <PlanCard state={state} status={status} onOpenComputer={openComputer} />
               <div className="composer steer slim">
                 <textarea
-                  rows={1} placeholder={status === 'failed' ? 'Session failed — start a new run' : 'Message Kiln'}
+                  rows={1} placeholder="Message Kiln"
                   value={message} onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+                  disabled={sending || state.followupActive}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
                 />
                 <div className="bar">
                   <div className="l">
@@ -115,7 +119,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
                   </div>
                   <div className="r">
                     <button className="mic" aria-label="Voice" onClick={() => toast('Voice input')}><Icon name="mic" /></button>
-                    <button className="send" aria-label="Send" onClick={send}><Icon name="up" /></button>
+                    <button type="button" className="send" aria-label="Send" disabled={sending || state.followupActive || !message.trim()} onClick={() => void send()}><Icon name="up" /></button>
                   </div>
                 </div>
               </div>

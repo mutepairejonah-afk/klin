@@ -58,6 +58,7 @@ interface EventBase<T extends string, P> {
 
 export type SessionEvent =
   | EventBase<'plan.updated', { todos: Todo[] }>
+  | EventBase<'message.user', { message: string }>
   | EventBase<'thought', { role: AgentRole; text: string }>
   | EventBase<'action.started', { role: AgentRole; tool: ToolName; verb: string; target: string }>
   | EventBase<'action.completed', { tool: ToolName; result?: string }>
