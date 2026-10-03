@@ -76,46 +76,60 @@ export const sessionsApi = {
 
   // Live event stream. Uses fetch rather than native EventSource so Clerk's
   // bearer token stays in an Authorization header, not in URLs/proxy logs.
-  subscribe(id: string, onEvent: (e: SessionEvent) => void, onError?: (e: Event) => void) {
+  // A fresh token is read on every (re)connect: Clerk session tokens live
+  // ~60s, so reusing the first one made every retry after a drop a 401. The
+  // loop keeps retrying with capped backoff until the caller unsubscribes, and
+  // `onOpen` fires after each successful (re)connect so callers can resync
+  // anything they missed while the stream was down.
+  subscribe(
+    id: string,
+    onEvent: (e: SessionEvent) => void,
+    onError?: (e: Event) => void,
+    onOpen?: () => void,
+  ) {
     const controller = new AbortController();
     let cancelled = false;
-    clerkToken().then((token) => {
-      if (cancelled) return;
-      void (async () => {
-        let attempt = 0;
-        while (!cancelled && attempt < 5) {
-          try {
-            const res = await fetch(`${API_BASE}/sessions/${id}/events`, {
-              credentials: 'include',
-              signal: controller.signal,
-              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-            });
-            if (!res.ok || !res.body) throw new ApiError(res.status, await res.text().catch(() => res.statusText));
-            attempt = 0;
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            while (!cancelled) {
-              const { value, done } = await reader.read();
-              if (done) break;
-              buffer += decoder.decode(value, { stream: true });
-              const frames = buffer.split('\n\n');
-              buffer = frames.pop() ?? '';
-              for (const frame of frames) {
-                const data = frame.split('\n').find((line) => line.startsWith('data:'))?.slice(5).trim();
-                if (!data) continue;
-                try { onEvent(JSON.parse(data) as SessionEvent); } catch { /* ignore malformed frame */ }
-              }
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    void (async () => {
+      let attempt = 0;
+      while (!cancelled) {
+        try {
+          const token = await clerkToken();
+          if (cancelled) return;
+          const res = await fetch(`${API_BASE}/sessions/${id}/events`, {
+            credentials: 'include',
+            signal: controller.signal,
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
+          if (!res.ok || !res.body) throw new ApiError(res.status, await res.text().catch(() => res.statusText));
+          attempt = 0;
+          onOpen?.();
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (!cancelled) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const frames = buffer.split('\n\n');
+            buffer = frames.pop() ?? '';
+            for (const frame of frames) {
+              const data = frame.split('\n').find((line) => line.startsWith('data:'))?.slice(5).trim();
+              if (!data) continue;
+              try { onEvent(JSON.parse(data) as SessionEvent); } catch { /* ignore malformed frame */ }
             }
-          } catch (err) {
-            if (cancelled) return;
-            attempt += 1;
-            if (attempt >= 5) { onError?.(err as Event); return; }
-            await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * 2 ** attempt, 8000)));
           }
+          // Stream ended cleanly (server restart, proxy idle timeout). Fall
+          // through to the backoff below instead of reconnecting in a tight loop.
+          if (!cancelled) onError?.(new Event('stream-ended'));
+        } catch (err) {
+          if (cancelled || (err as { name?: string })?.name === 'AbortError') return;
+          onError?.(err as Event);
         }
-      })();
-    });
+        attempt += 1;
+        await wait(Math.min(1000 * 2 ** Math.min(attempt, 4), 15000));
+      }
+    })();
     return () => { cancelled = true; controller.abort(); };
   },
 };

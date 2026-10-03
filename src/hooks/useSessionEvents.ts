@@ -24,11 +24,16 @@ export function useSessionEvents(sessionId: string, opts: Options) {
   const [connected, setConnected] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const unsubRef = useRef<() => void>();
+  const resyncRef = useRef<() => Promise<void>>();
 
   useEffect(() => {
     let active = true;
     setEvents([]); setCursor(0); setLoadError(null);
     if (opts.mode === 'live') {
+      const syncHistory = () => sessionsApi.replay(sessionId)
+        .then((history) => { if (active) setEvents((prev) => mergeBySequence(prev, history)); })
+        .catch((err) => { if (active) setLoadError(String(err)); });
+      resyncRef.current = syncHistory;
       unsubRef.current = sessionsApi.subscribe(
         sessionId,
         (event) => {
@@ -37,12 +42,10 @@ export function useSessionEvents(sessionId: string, opts: Options) {
           setEvents((prev) => mergeBySequence(prev, [event]));
         },
         () => setConnected(false),
+        // After every (re)connect, pull history so anything emitted while the
+        // stream was down (including our own messages) shows up.
+        () => { if (active) { setConnected(true); void syncHistory(); } },
       );
-      // History is fetched alongside SSE so refreshes restore the whole thread;
-      // sequence merging handles events that arrive while replay is in flight.
-      sessionsApi.replay(sessionId)
-        .then((history) => { if (active) setEvents((prev) => mergeBySequence(prev, history)); })
-        .catch((err) => { if (active) setLoadError(String(err)); });
       return () => { active = false; setConnected(false); unsubRef.current?.(); };
     }
 
@@ -72,6 +75,9 @@ export function useSessionEvents(sessionId: string, opts: Options) {
     setLoadError(null);
     try {
       await sessionsApi.sendMessage(sessionId, message);
+      // The server persists the message before it replies, so a history pull
+      // shows it immediately even when the live stream is down.
+      void resyncRef.current?.();
       return true;
     } catch (err) {
       setLoadError(String(err));
