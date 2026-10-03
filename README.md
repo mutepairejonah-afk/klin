@@ -33,7 +33,8 @@ npm run build       # production build to dist/
 Point it at a real API:
 
 ```bash
-echo "VITE_API_BASE=https://api.yourdomain.com" > .env.local
+echo "VITE_API_BASE=https://kiln-api-ezfp.onrender.com/api" > .env.local
+# Also set VITE_CLERK_PUBLISHABLE_KEY from the same Clerk instance used by the backend.
 ```
 
 Until then, every fetch fails safe: lists render their empty state, and

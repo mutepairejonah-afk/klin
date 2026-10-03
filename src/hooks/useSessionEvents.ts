@@ -29,7 +29,10 @@ export function useSessionEvents(sessionId: string, opts: Options) {
           setConnected(true);
           setEvents((prev) => prev.some((item) => item.seq === e.seq) ? prev : [...prev, e]);
         },
-        () => setConnected(false),
+        (err) => {
+          setConnected(false);
+          setLoadError(err instanceof Error ? err.message : 'Live session authorization failed. Please sign in again.');
+        },
       );
       return () => { setConnected(false); unsubRef.current?.(); };
     }

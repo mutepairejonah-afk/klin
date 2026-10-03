@@ -1,41 +1,73 @@
 // ---------------------------------------------------------------------------
 // Backend seam. Every function here is a thin fetch wrapper over the REST
-// surface in docs/BACKEND.md. Nothing in this file has business logic or
-// mock data — point API_BASE at your API and these become real.
+// surface in docs/BACKEND.md. Protected requests never leave the browser
+// without a Clerk bearer token.
 // ---------------------------------------------------------------------------
 import type {
   Session, SessionEvent, Connector, Secret, Schedule, AuditEntry, Member,
   UsageSummary, Artifact, SessionStatus,
 } from './types';
 
-export const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
+const configuredApiBase = import.meta.env.VITE_API_BASE ?? '/api';
+export const API_BASE = configuredApiBase.replace(/\/+$/, '');
 
-class ApiError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+export class ApiError extends Error {
+  constructor(public status: number, message: string) { super(message); this.name = 'ApiError'; }
 }
 
-// Clerk (via ClerkProvider in main.tsx) attaches itself to window.Clerk once
-// loaded. Reading the session token here — rather than threading it through
-// every call site — keeps every existing api.ts function signature unchanged.
-async function clerkToken(): Promise<string | undefined> {
-  const clerk = (window as any).Clerk;
-  if (!clerk?.session) return undefined;
-  try { return await clerk.session.getToken(); } catch { return undefined; }
+export class AuthRequiredError extends ApiError {
+  constructor(message = 'Your Clerk session is not ready or has expired. Please sign in again.') { super(401, message); this.name = 'AuthRequiredError'; }
 }
 
-async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = await clerkToken();
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+interface ClerkLike {
+  loaded?: boolean;
+  session?: { getToken: (options?: { skipCache?: boolean }) => Promise<string | null> };
+}
+
+async function clerkInstance(): Promise<ClerkLike> {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const clerk = (window as any).Clerk as ClerkLike | undefined;
+    if (clerk) return clerk;
+    await sleep(50);
+  }
+  throw new AuthRequiredError('Clerk did not finish loading. Please reload and sign in again.');
+}
+
+// ClerkProvider may have mounted React before its browser object has finished
+// loading. Wait for readiness instead of sending a request with no auth header.
+async function clerkToken(required = true): Promise<string | undefined> {
+  const clerk = await clerkInstance();
+  const deadline = Date.now() + 10_000;
+  while (clerk.loaded !== true && Date.now() < deadline) await sleep(50);
+  if (clerk.loaded !== true) {
+    if (!required) return undefined;
+    throw new AuthRequiredError('Clerk is still loading. Please try again in a moment.');
+  }
+  if (!clerk.session) {
+    if (!required) return undefined;
+    throw new AuthRequiredError();
+  }
+  const token = await clerk.session.getToken();
+  if (!token && required) throw new AuthRequiredError();
+  return token ?? undefined;
+}
+
+async function http<T>(path: string, init?: RequestInit, auth: 'required' | 'optional' = 'required'): Promise<T> {
+  const token = await clerkToken(auth === 'required');
+  const headers = new Headers(init?.headers);
+  if (!headers.has('Content-Type') && init?.body) headers.set('Content-Type', 'application/json');
+  if (token) headers.set('Authorization', `Bearer ${token}`);
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers ?? {}),
-    },
     ...init,
+    headers,
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
+    if (res.status === 401 && auth === 'required') throw new AuthRequiredError(body || 'Your session is no longer authorized. Please sign in again.');
     throw new ApiError(res.status, body || res.statusText);
   }
   if (res.status === 204) return undefined as T;
@@ -76,54 +108,63 @@ export const sessionsApi = {
 
   // Live event stream. Uses fetch rather than native EventSource so Clerk's
   // bearer token stays in an Authorization header, not in URLs/proxy logs.
-  subscribe(id: string, onEvent: (e: SessionEvent) => void, onError?: (e: Event) => void) {
+  subscribe(id: string, onEvent: (e: SessionEvent) => void, onError?: (e: unknown) => void) {
     const controller = new AbortController();
     let cancelled = false;
-    clerkToken().then((token) => {
-      if (cancelled) return;
-      void (async () => {
-        let attempt = 0;
-        while (!cancelled && attempt < 5) {
-          try {
-            const res = await fetch(`${API_BASE}/sessions/${id}/events`, {
-              credentials: 'include',
-              signal: controller.signal,
-              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-            });
-            if (!res.ok || !res.body) throw new ApiError(res.status, await res.text().catch(() => res.statusText));
-            attempt = 0;
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            while (!cancelled) {
-              const { value, done } = await reader.read();
-              if (done) break;
-              buffer += decoder.decode(value, { stream: true });
-              const frames = buffer.split('\n\n');
-              buffer = frames.pop() ?? '';
-              for (const frame of frames) {
-                const data = frame.split('\n').find((line) => line.startsWith('data:'))?.slice(5).trim();
-                if (!data) continue;
-                try { onEvent(JSON.parse(data) as SessionEvent); } catch { /* ignore malformed frame */ }
-              }
-            }
-          } catch (err) {
-            if (cancelled) return;
-            attempt += 1;
-            if (attempt >= 5) { onError?.(err as Event); return; }
-            await new Promise((resolve) => setTimeout(resolve, Math.min(1000 * 2 ** attempt, 8000)));
-          }
+    void (async () => {
+      let attempt = 0;
+      while (!cancelled && attempt < 5) {
+        let token: string;
+        try {
+          token = (await clerkToken(true))!;
+        } catch (error) {
+          if (!cancelled) onError?.(error);
+          return;
         }
-      })();
-    });
+        try {
+          const res = await fetch(`${API_BASE}/sessions/${id}/events`, {
+            credentials: 'include',
+            signal: controller.signal,
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.status === 401) {
+            onError?.(new AuthRequiredError('The live session authorization expired. Please sign in again.'));
+            return;
+          }
+          if (!res.ok || !res.body) throw new ApiError(res.status, await res.text().catch(() => res.statusText));
+          attempt = 0;
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (!cancelled) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const frames = buffer.split('\n\n');
+            buffer = frames.pop() ?? '';
+            for (const frame of frames) {
+              const data = frame.split('\n').find((line) => line.startsWith('data:'))?.slice(5).trim();
+              if (!data) continue;
+              try { onEvent(JSON.parse(data) as SessionEvent); } catch { /* ignore malformed frame */ }
+            }
+          }
+          if (!cancelled) attempt += 1;
+        } catch (err) {
+          if (cancelled) return;
+          attempt += 1;
+          if (attempt >= 5) { onError?.(err); return; }
+          await sleep(Math.min(1000 * 2 ** attempt, 8000));
+        }
+      }
+    })();
     return () => { cancelled = true; controller.abort(); };
   },
 };
 
 // A read-only variant for shared links (no auth, id is an opaque share token).
 export const shareApi = {
-  get: (token: string) => http<Session>(`/share/${token}`),
-  replay: (token: string) => http<SessionEvent[]>(`/share/${token}/replay`),
+  get: (token: string) => http<Session>(`/share/${token}`, undefined, 'optional'),
+  replay: (token: string) => http<SessionEvent[]>(`/share/${token}/replay`, undefined, 'optional'),
 };
 
 // ---- Jobs (static catalog; see lib/jobs.ts) ---------------------------------
