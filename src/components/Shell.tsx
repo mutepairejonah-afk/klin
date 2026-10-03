@@ -35,7 +35,7 @@ export default function Shell() {
             </button>
           </div>
         </header>
-        <div className="page">
+        <div className={`page ${location.pathname.startsWith('/s/') ? 'page-chat' : ''}`}>
           <Outlet />
         </div>
       </main>

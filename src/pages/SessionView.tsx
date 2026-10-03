@@ -30,6 +30,8 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [compMode, setCompMode] = useState<'normal' | 'min' | 'full'>('normal');
+  const threadRef = useRef<HTMLDivElement>(null);
+  const followThread = useRef(true);
 
   const { visibleEvents, state, cursor, setCursor, maxCursor, approve, sendMessage } =
     useSessionEvents(id, { mode });
@@ -38,6 +40,16 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
     sessionsApi.get(id).then(setMeta).catch(() => setMetaError(true));
     connectionsApi.list().then(setConnectors).catch(() => setConnectors([]));
   }, [id]);
+
+  // Keep the live conversation at the newest message, like a normal chat,
+  // but let the user scroll up without being pulled back to the bottom.
+  useEffect(() => {
+    if (mode !== 'live' || !followThread.current) return;
+    const el = threadRef.current;
+    if (!el) return;
+    const frame = requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+    return () => cancelAnimationFrame(frame);
+  }, [mode, visibleEvents.length, extra.length]);
 
   const status = meta ? statusFromFold(state, meta.status) : 'planning';
   const displayState = selectedFile && state.files[selectedFile] ? { ...state, currentFile: selectedFile } : state;
@@ -55,6 +67,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   function send() {
     if (!message.trim()) return;
     if (mode === 'live') sendMessage(message.trim());
+    followThread.current = true;
     setExtra((e) => [...e, message.trim()]);
     setMessage('');
   }
@@ -95,7 +108,14 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
 
       <section className="thread-col">
         {hasComp && <RoleBar state={state} status={status} />}
-        <div className="thr-scroll">
+        <div
+          ref={threadRef}
+          className="thr-scroll"
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            followThread.current = el.scrollHeight - el.scrollTop - el.clientHeight < 96;
+          }}
+        >
           <ThreadPanel goal={meta.goal} state={state} status={status} onTab={selectTab} onApprove={approve} extraMessages={extra} />
         </div>
         {mode === 'live' && (
