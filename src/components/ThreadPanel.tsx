@@ -39,6 +39,7 @@ function ThreadEntry({ item, onTab, onApprove }: {
   item: ThreadItem; onTab: (t: string) => void;
   onApprove: (id: string, decision: 'approved' | 'rejected') => void;
 }) {
+  if (item.kind === 'user') return <div className="umsg" style={{ marginTop: 8 }}><div className="bubble">{item.text}</div></div>;
   if (item.kind === 'thought') return <p className="th">{item.text}</p>;
   if (item.kind === 'act') return (
     <button className="act" onClick={() => onTab(item.tool)}>
@@ -90,10 +91,10 @@ function ThreadEntry({ item, onTab, onApprove }: {
 }
 
 export function ThreadPanel({
-  goal, state, status, onTab, onApprove, extraMessages,
+  goal, state, status, onTab, onApprove,
 }: {
   goal: string; state: FoldedState; status: string; onTab: (t: string) => void;
-  onApprove: (id: string, decision: 'approved' | 'rejected') => void; extraMessages: string[];
+  onApprove: (id: string, decision: 'approved' | 'rejected') => void;
 }) {
   const pr = state.artifacts.find((a) => a.kind === 'pr');
   const showThinking = (status === 'executing' || status === 'planning') && state.thread[state.thread.length - 1]?.kind !== 'act';
@@ -109,12 +110,6 @@ export function ThreadPanel({
           {pr.url && <a className="btn sm" href={pr.url} target="_blank" rel="noopener noreferrer"><Icon name="ext" />View PR</a>}
         </div>
       )}
-      {extraMessages.map((m, i) => (
-        <div key={i}>
-          <div className="umsg" style={{ marginTop: 8 }}><div className="bubble">{m}</div></div>
-          <p className="th">Got it. I’ll factor that into the next step.</p>
-        </div>
-      ))}
       {showThinking && (
         <div className="thinking">{MARK_INLINE}<span className="shimmer">Thinking</span></div>
       )}

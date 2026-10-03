@@ -58,6 +58,7 @@ interface EventBase<T extends string, P> {
 
 export type SessionEvent =
   | EventBase<'plan.updated', { todos: Todo[] }>
+  | EventBase<'message.user', { message: string }>
   | EventBase<'thought', { role: AgentRole; text: string }>
   | EventBase<'action.started', { role: AgentRole; tool: ToolName; verb: string; target: string }>
   | EventBase<'action.completed', { tool: ToolName; result?: string }>
@@ -118,7 +119,7 @@ export interface Connector {
   description: string;
   scopes: string[];
   connected: boolean;
-  oauth?: boolean; // true = real OAuth flow (see connectionsApi.githubOAuthUrl); false = stub connect
+  oauth?: boolean; // true = real OAuth flow; false = unavailable until that provider is implemented
   meta?: { login?: string; avatarUrl?: string } | string;
   lastUsedAt?: string;
 }

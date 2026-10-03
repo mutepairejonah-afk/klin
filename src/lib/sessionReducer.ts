@@ -7,6 +7,7 @@ import type {
 } from './types';
 
 export type ThreadItem =
+  | { kind: 'user'; text: string }
   | { kind: 'thought'; role: AgentRole; text: string }
   | { kind: 'act'; role: AgentRole; tool: ToolName; verb: string; target: string }
   | { kind: 'approval'; approval: Approval; decision: 'pending' | 'approved' | 'rejected' }
@@ -37,13 +38,14 @@ export interface FoldedState {
   elapsedSec: number;
   finished: boolean;
   failed: boolean;
+  followupActive: boolean;
 }
 
 const initial: FoldedState = {
   todos: [], activeIndex: -1, role: null, phase: 'planning', thread: [], term: [],
   files: {}, fileOrder: [], currentFile: null, browserUrl: null, screenshotUrl: null,
   previewUrl: null, db: null, artifacts: [], pendingApproval: null, elapsedSec: 0,
-  finished: false, failed: false,
+  finished: false, failed: false, followupActive: false,
 };
 
 export function foldEvents(events: SessionEvent[]): FoldedState {
@@ -60,6 +62,14 @@ export function foldEvents(events: SessionEvent[]): FoldedState {
       case 'plan.updated':
         s.todos = e.payload.todos;
         s.activeIndex = s.todos.findIndex((t) => !t.done);
+        break;
+      case 'message.user':
+        s.thread.push({ kind: 'user', text: e.payload.message });
+        s.finished = false;
+        s.failed = false;
+        s.followupActive = true;
+        s.phase = 'planning';
+        s.role = null;
         break;
       case 'thought':
         s.thread.push({ kind: 'thought', role: e.payload.role, text: e.payload.text });
@@ -130,6 +140,7 @@ export function foldEvents(events: SessionEvent[]): FoldedState {
       case 'error':
         s.thread.push({ kind: 'error', message: e.payload.message });
         s.failed = true;
+        s.followupActive = false;
         s.phase = 'failed';
         break;
       case 'session.done':
@@ -138,6 +149,7 @@ export function foldEvents(events: SessionEvent[]): FoldedState {
         // payload.summary too just repeats it (this used to duplicate every
         // chat answer on screen).
         s.finished = true;
+        s.followupActive = false;
         s.phase = 'done';
         s.role = null;
         break;
@@ -161,6 +173,8 @@ function secondsSince(a?: string, b?: string) {
 
 export function statusFromFold(f: FoldedState, sessionStatus: string): string {
   if (f.pendingApproval) return 'waiting_approval';
+  if (f.followupActive) return f.phase;
+  if (f.failed) return 'failed';
   if (f.finished) return f.failed ? 'failed' : 'done';
   return sessionStatus;
 }

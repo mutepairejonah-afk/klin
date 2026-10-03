@@ -37,7 +37,7 @@ export default function Home() {
       setDraft(''); setSelectedJobId(null);
       nav(`/s/${session.id}`);
     } catch {
-      toast('Backend not connected yet');
+      toast('Request failed — check your connection or permissions');
     } finally {
       setStarting(false);
     }

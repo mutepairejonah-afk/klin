@@ -142,7 +142,9 @@ which case add `GET/PUT /job-templates`.
 
 ## 4. Event contract (`SessionEvent`, `src/lib/types.ts`)
 
-Transport is SSE in this build (`EventSource`, one JSON object per event).
+Transport is SSE in this build. The frontend uses an authenticated `fetch`
+stream rather than native `EventSource`, because native EventSource cannot
+send the Clerk bearer header without putting tokens in URLs.
 If you'd rather standardize on Socket.IO across your existing apps, that's
 a fine substitution — keep the **event envelope** identical either way:
 
@@ -384,9 +386,9 @@ BullMQ (or equivalent) jobs:
 
 ## 13. Suggested build order
 
-1. `sessions` + `events` tables, the SSE endpoint, and a stub orchestrator
-   that just emits a canned event script — lets you build/demo the frontend
-   against something real before the agent loop exists.
+1. `sessions` + `events` tables and the SSE endpoint. Until the real
+   orchestrator exists, coding sessions must fail explicitly rather than emit
+   fabricated terminal output, edits, tests, or PRs.
 2. Stand up OpenSandbox (Docker runtime) + the `filesystem`/`shell`/`git`
    MCP tools; wire one job template (`bug_fix`) end to end.
 3. Auth, `connections`, `secrets`, GitHub OAuth + PR creation.

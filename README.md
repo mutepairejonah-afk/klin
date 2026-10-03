@@ -37,7 +37,9 @@ echo "VITE_API_BASE=https://api.yourdomain.com" > .env.local
 ```
 
 Until then, every fetch fails safe: lists render their empty state, and
-starting a task shows a "Backend not connected yet" toast.
+failed requests show an actionable connection/permission error. Coding
+sessions do not display simulated edits or pull requests when execution is
+not configured.
 
 ## Where things live
 
@@ -48,7 +50,7 @@ src/
                          Connector, Secret, Schedule, Artifact, ...
     api.ts               <-- the whole backend seam. One function per
                          endpoint in docs/BACKEND.md. Nothing else in the
-                         app talks to fetch()/EventSource directly except
+                         app talks to fetch()/the authenticated SSE stream directly except
                          through this file (and the hooks below).
     sessionReducer.ts    Pure fold: SessionEvent[] -> renderable state.
                          Same function drives live, replay, and the

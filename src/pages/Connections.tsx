@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
@@ -6,114 +6,308 @@ import { useToast } from '@/components/Toast';
 import { CONNECTOR_CATALOG } from '@/lib/connectorCatalog';
 import { connectionsApi } from '@/lib/api';
 import { Skeleton } from '@/components/Skeleton';
+import { useUiStore } from '@/lib/store';
 import type { Connector } from '@/lib/types';
 
 const TABS = [
   { key: 'integrations', label: 'Integrations' },
-  { key: 'tools', label: 'Tools (MCP)' },
+  { key: 'tools', label: 'Built-in tools' },
+] as const;
+
+type Filter = 'all' | 'connected' | 'ready' | 'soon';
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: 'all', label: 'All integrations' },
+  { key: 'connected', label: 'Connected' },
+  { key: 'ready', label: 'Ready to connect' },
+  { key: 'soon', label: 'In development' },
 ];
 
-const MCP_TOOLS = [
-  { name: 'filesystem', icon: 'folder', tools: 'read_file · write_file · list_dir · apply_patch · search' },
-  { name: 'shell', icon: 'terminal', tools: 'exec (timeout + cwd)' },
-  { name: 'git', icon: 'branch', tools: 'clone · status · diff · branch · commit · push · pr_create' },
-  { name: 'browser', icon: 'globe', tools: 'navigate · click · type · screenshot · extract' },
-  { name: 'database', icon: 'db', tools: 'get_schema · generate_sql · dry_run · execute · rollback' },
-  { name: 'tests', icon: 'flask', tools: 'run_tests · parse_results' },
-  { name: 'deploy', icon: 'rocket', tools: 'preview_deploy · logs · rollback_deploy' },
-  { name: 'secrets', icon: 'lock', tools: 'request_secret (handle only)' },
+const TOOL_GROUPS = [
+  {
+    title: 'Workspace', icon: 'folder',
+    tools: [
+      { name: 'Filesystem', detail: 'Read, search, and edit project files', commands: 'read_file · write_file · list_dir · apply_patch · search' },
+      { name: 'Terminal', detail: 'Run commands in the project workspace', commands: 'exec · timeout · working directory' },
+      { name: 'Git', detail: 'Inspect changes and manage branches', commands: 'clone · status · diff · branch · commit · push · PR' },
+    ],
+  },
+  {
+    title: 'Research & data', icon: 'globe',
+    tools: [
+      { name: 'Browser', detail: 'Navigate pages and inspect web content', commands: 'navigate · click · type · screenshot · extract' },
+      { name: 'Database', detail: 'Inspect schemas and work with queries', commands: 'schema · dry run · execute · rollback' },
+    ],
+  },
+  {
+    title: 'Ship with confidence', icon: 'rocket',
+    tools: [
+      { name: 'Tests', detail: 'Run checks and read structured results', commands: 'run tests · parse results' },
+      { name: 'Deploy', detail: 'Preview deployments and inspect their health', commands: 'preview · logs · rollback' },
+      { name: 'Secrets', detail: 'Reference approved credentials by handle', commands: 'request secret · handle only' },
+    ],
+  },
 ];
+
+function ConnectorMark({ id, name }: { id: string; name: string }) {
+  return (
+    <span className={`provider-mark provider-${id}`} aria-hidden="true">
+      {id === 'github' ? <Icon name="gh" /> : id === 'supabase' ? <Icon name="spark" /> : id === 'vercel' ? <span className="vercel-mark" /> : name.slice(0, 1)}
+    </span>
+  );
+}
+
+function lastUsedLabel(value?: string) {
+  if (!value) return 'Connected';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Connected';
+  return `Last used ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+}
 
 export default function Connections() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') || 'integrations';
   const toast = useToast((s) => s.show);
+  const removeConnector = useUiStore((s) => s.removeConnector);
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
 
   function refresh() {
-    connectionsApi.list().then(setConnectors).catch(() => setConnectors([])).finally(() => setLoading(false));
+    connectionsApi.list()
+      .then((data) => { setConnectors(data); setLoadError(false); })
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
   }
-  useEffect(refresh, []);
 
-  // After a real OAuth round-trip, GitHub's callback redirects back here with
-  // ?connected=github or ?error=... — surface it once, then clean the URL.
+  useEffect(() => { refresh(); }, []);
+
+  // Surface the OAuth callback once, then clean its parameters from the URL.
   useEffect(() => {
     const connected = params.get('connected');
-    const err = params.get('error');
+    const error = params.get('error');
     if (connected) { toast(`Connected ${connected}`); refresh(); }
-    if (err) toast(err === 'github_not_configured' ? 'GitHub connector isn’t set up on the server yet' : 'Connection failed — try again');
-    if (connected || err) { params.delete('connected'); params.delete('error'); setParams(params, { replace: true }); }
+    if (error) {
+      const messages: Record<string, string> = {
+        github_not_configured: 'GitHub sign-in is not configured on the server yet.',
+        github_state: 'The GitHub sign-in link expired. Please try again.',
+        github_token: 'GitHub could not complete sign-in. Please try again.',
+        github_save: 'GitHub signed in, but the connection could not be saved.',
+      };
+      toast(messages[error] ?? 'Connection failed. Please try again.');
+    }
+    if (connected || error) {
+      const next = new URLSearchParams(params);
+      next.delete('connected');
+      next.delete('error');
+      setParams(next, { replace: true });
+    }
+    // This should run only for the OAuth callback query on initial mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const byId = new Map(connectors.map((c) => [c.id, c]));
+  const byId = useMemo(() => new Map(connectors.map((connector) => [connector.id, connector])), [connectors]);
+  const connectedCount = connectors.filter((connector) => connector.connected).length;
+  const readyCount = CONNECTOR_CATALOG.filter((item) => byId.get(item.id)?.oauth && !byId.get(item.id)?.connected).length;
+  const filteredCatalog = CONNECTOR_CATALOG.filter((item) => {
+    const live = byId.get(item.id);
+    const matchesFilter = filter === 'all'
+      || (filter === 'connected' && !!live?.connected)
+      || (filter === 'ready' && !!live?.oauth && !live.connected)
+      || (filter === 'soon' && !!live && !live.oauth);
+    const matchesQuery = `${item.name} ${item.description} ${item.scopes.join(' ')}`.toLowerCase().includes(query.trim().toLowerCase());
+    return matchesFilter && matchesQuery;
+  });
+
+  async function handleConnection(connector: Connector, connected: boolean) {
+    if (!connector.oauth && !connected) return;
+    setBusyId(connector.id);
+    try {
+      if (connected) {
+        await connectionsApi.disconnect(connector.id);
+        removeConnector(connector.id);
+        toast(`Disconnected ${connector.name}`);
+        refresh();
+      } else {
+        const { url } = await connectionsApi.githubOAuthUrl();
+        window.location.href = url;
+      }
+    } catch {
+      toast(connected ? `Couldn’t disconnect ${connector.name}. Try again.` : `${connector.name} sign-in isn’t available right now.`);
+      setBusyId(null);
+    }
+  }
 
   return (
     <>
       <HeaderLeft><span className="h-title">Connectors</span></HeaderLeft>
       <HeaderRight />
-      <div className="wrap">
-        <div className="pg-h"><div><h1 className="h1">Connectors</h1><p className="sub">Accounts and tools the agent can use.</p></div></div>
-        <div className="tabs">
-          {TABS.map((t) => <button key={t.key} className={`tab ${tab === t.key ? 'on' : ''}`} onClick={() => setParams({ tab: t.key })}>{t.label}</button>)}
+      <div className="wrap connector-wrap">
+        <div className="connector-hero">
+          <div className="connector-hero-icon"><Icon name="plug" /></div>
+          <div className="connector-hero-copy">
+            <div className="connector-eyebrow">Your workspace, connected</div>
+            <h1 className="h1">Connectors</h1>
+            <p className="sub">Bring your tools into the work. Choose what Klin can access, and keep control of every connection.</p>
+          </div>
+        </div>
+
+        <div className="connector-stats" aria-label="Integration summary">
+          <div className="connector-stat"><span className="connector-stat-icon"><Icon name="link" /></span><div><b>{loading ? '—' : connectedCount}</b><small>Connected</small></div></div>
+          <div className="connector-stat"><span className="connector-stat-icon"><Icon name="shield" /></span><div><b>{loading ? '—' : readyCount}</b><small>Ready to connect</small></div></div>
+          <div className="connector-stat"><span className="connector-stat-icon"><Icon name="layers" /></span><div><b>{CONNECTOR_CATALOG.length}</b><small>Integrations</small></div></div>
+        </div>
+
+        <div className="tabs connector-tabs" role="tablist" aria-label="Connector sections">
+          {TABS.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={tab === item.key}
+              className={`tab ${tab === item.key ? 'on' : ''}`}
+              onClick={() => setParams({ tab: item.key })}
+            >
+              {item.label}
+              {item.key === 'integrations' && <span className="tab-count">{CONNECTOR_CATALOG.length}</span>}
+            </button>
+          ))}
         </div>
 
         {tab === 'integrations' && (
-          <div className="grid g2">
-            {CONNECTOR_CATALOG.map((c) => {
-              const live = byId.get(c.id);
-              const connected = !!live?.connected;
-              return (
-                <div className="card pad" key={c.id} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                  <span className="logo">{c.id === 'github' ? <Icon name="gh" /> : c.name[0]}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <b style={{ fontWeight: 600 }}>{c.name}</b>
-                      {connected && <span className="badge ok">Connected</span>}
-                    </div>
-                    <div className="muted" style={{ fontSize: 14, margin: '2px 0 8px' }}>{c.description}</div>
-                    {connected && (
-                      <>
-                        <div className="muted" style={{ fontSize: 13 }}>
-                          {typeof live?.meta === 'string' ? live.meta : live?.meta?.login ? `Signed in as ${live.meta.login}` : null}
-                        </div>
-                        <div className="chips" style={{ marginTop: 8 }}>{c.scopes.map((s) => <span className="badge" key={s}>{s}</span>)}</div>
-                      </>
-                    )}
-                  </div>
-                  <button
-                    className={`btn sm ${connected ? '' : 'pri'}`}
-                    disabled={loading}
-                    onClick={() => {
-                      if (connected) { connectionsApi.disconnect(c.id).then(refresh).catch(() => toast('Backend not connected yet')); return; }
-                      if (live?.oauth) {
-                        connectionsApi.githubOAuthUrl()
-                          .then(({ url }) => { window.location.href = url; })
-                          .catch(() => toast('GitHub connector isn’t set up on the server yet'));
-                        return;
-                      }
-                      connectionsApi.connect(c.id).then(refresh).catch(() => toast('Backend not connected yet'));
-                    }}
-                  >
-                    {loading ? <Skeleton width={50} height={12} style={{ display: 'inline-block' }} /> : connected ? 'Manage' : 'Connect'}
+          <section role="tabpanel" aria-label="Integrations">
+            <div className="integration-toolbar">
+              <div className="integration-filter" role="group" aria-label="Filter integrations">
+                {FILTERS.map((item) => (
+                  <button key={item.key} type="button" className={filter === item.key ? 'selected' : ''} onClick={() => setFilter(item.key)}>
+                    {item.label}
+                    {item.key === 'connected' && <span>{loading ? '—' : connectedCount}</span>}
+                    {item.key === 'ready' && <span>{loading ? '—' : readyCount}</span>}
                   </button>
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+              <label className="integration-search">
+                <Icon name="search" />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find an integration" aria-label="Search integrations" />
+                {query && <button type="button" aria-label="Clear search" onClick={() => setQuery('')}><Icon name="x" /></button>}
+              </label>
+            </div>
+
+            {loadError && (
+              <div className="connector-notice" role="status">
+                <span className="notice-icon"><Icon name="alert" /></span>
+                <div><b>Couldn’t load connection status</b><p>Check your connection and try again. Your existing integrations haven’t been changed.</p></div>
+                <button type="button" className="btn sm" onClick={() => { setLoading(true); refresh(); }}><Icon name="retry" /> Retry</button>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="integration-grid" aria-label="Loading integrations">
+                {CONNECTOR_CATALOG.slice(0, 4).map((item) => <div className="integration-card loading-card" key={item.id}><Skeleton width={44} height={44} /><Skeleton width="42%" height={16} /><Skeleton width="82%" height={13} /><Skeleton width="30%" height={30} /></div>)}
+              </div>
+            ) : filteredCatalog.length ? (
+              <div className="integration-grid">
+                {filteredCatalog.map((item) => {
+                  const live = byId.get(item.id);
+                  const statusKnown = !!live;
+                  const connected = !!live?.connected;
+                  const ready = !!live?.oauth;
+                  const meta = live?.meta;
+                  const account = typeof meta === 'string' ? meta : meta?.login ? `Signed in as ${meta.login}` : 'Account connected';
+                  return (
+                    <article className={`integration-card ${connected ? 'is-connected' : ''}`} key={item.id}>
+                      <div className="integration-card-top">
+                        <ConnectorMark id={item.id} name={item.name} />
+                        <span className={`connection-state ${connected ? 'state-connected' : !statusKnown ? 'state-unknown' : ready ? 'state-ready' : 'state-soon'}`}>
+                          <i />{connected ? 'Connected' : !statusKnown ? 'Status unavailable' : ready ? 'Ready to connect' : 'In development'}
+                        </span>
+                      </div>
+                      <h2>{item.name}</h2>
+                      <p className="integration-description">{item.description}</p>
+
+                      {connected ? (
+                        <div className="integration-account">
+                          {typeof meta === 'object' && meta?.avatarUrl
+                            ? <img src={meta.avatarUrl} alt="" />
+                            : <span className="account-avatar"><Icon name="user" /></span>}
+                          <div><b>{account}</b><small>{lastUsedLabel(live?.lastUsedAt)}</small></div>
+                        </div>
+                      ) : (
+                        <div className="integration-scope-preview">
+                          <span>Access includes</span>
+                          <div className="scope-chips">{item.scopes.slice(0, 3).map((scope) => <span key={scope}>{scope}</span>)}</div>
+                        </div>
+                      )}
+
+                      <div className="integration-card-footer">
+                        {connected ? (
+                          <>
+                            <span className="connected-footnote"><Icon name="shield" /> Access is encrypted</span>
+                            <button type="button" className="disconnect-button" disabled={busyId === item.id} onClick={() => live && handleConnection(live, true)}>
+                              {busyId === item.id ? <><span className="spin" /> Working</> : 'Disconnect'}
+                            </button>
+                          </>
+                        ) : !statusKnown ? (
+                          <>
+                            <span className="connected-footnote">Check connection status to continue</span>
+                            <button type="button" className="btn sm coming-button" disabled>Unavailable</button>
+                          </>
+                        ) : ready ? (
+                          <>
+                            <span className="connected-footnote">Secure OAuth sign-in</span>
+                            <button type="button" className="btn pri connect-button" disabled={busyId === item.id} onClick={() => live && handleConnection(live, false)}>
+                              {busyId === item.id ? <><span className="spin" /> Connecting</> : <>Connect <Icon name="arrow" /></>}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="connected-footnote">Provider setup is underway</span>
+                            <button type="button" className="btn sm coming-button" disabled>Coming soon</button>
+                          </>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="connector-empty">
+                <span className="connector-empty-icon"><Icon name={query ? 'search' : 'filter'} /></span>
+                <b>{query ? 'No matching integrations' : 'Nothing in this view yet'}</b>
+                <p>{query ? 'Try another name or clear your search.' : 'Choose another filter to see your integrations.'}</p>
+                <button type="button" className="btn sm" onClick={() => { setFilter('all'); setQuery(''); }}>Show all integrations</button>
+              </div>
+            )}
+
+            <div className="connector-security-note"><Icon name="lock" /><p><b>Your access stays yours.</b> Revoke an integration at any time. Provider access is used only for the work you ask Klin to do.</p></div>
+          </section>
         )}
 
         {tab === 'tools' && (
-          <div className="card">
-            {MCP_TOOLS.map((t) => (
-              <div className="row-item" key={t.name}>
-                <span className="ico-sq"><Icon name={t.icon} /></span>
-                <div className="txt"><b style={{ fontWeight: 500 }}>{t.name}</b><small className="mono" style={{ fontSize: 12.5 }}>{t.tools}</small></div>
-                <label className="switch"><input type="checkbox" defaultChecked aria-label={`Enable ${t.name}`} /><span /></label>
-              </div>
-            ))}
-          </div>
+          <section className="built-tools-panel" role="tabpanel" aria-label="Built-in tools">
+            <div className="built-tools-intro">
+              <div><span className="connector-eyebrow">Ready when you are</span><h2>Built-in tools</h2><p>Core capabilities Klin can use to plan, build, test, and ship your work.</p></div>
+              <span className="tools-ready-badge"><i /> Available in sessions</span>
+            </div>
+            <div className="tool-groups">
+              {TOOL_GROUPS.map((group) => (
+                <div className="tool-group" key={group.title}>
+                  <div className="tool-group-heading"><span><Icon name={group.icon} /></span><h3>{group.title}</h3><small>{group.tools.length} tools</small></div>
+                  <div className="tool-list">
+                    {group.tools.map((tool) => (
+                      <article className="built-tool" key={tool.name}>
+                        <span className="tool-ready-check"><Icon name="check" /></span>
+                        <div><b>{tool.name}</b><p>{tool.detail}</p><code>{tool.commands}</code></div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="tools-footnote"><Icon name="info" /><p>External services such as GitHub and deployment providers must be connected separately in <button type="button" onClick={() => setParams({ tab: 'integrations' })}>Integrations</button>.</p></div>
+          </section>
         )}
       </div>
     </>
