@@ -42,7 +42,7 @@ export function RepoPicker({ repo, connected, onPick }: { repo: string; connecte
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
-      <span className="pill" onClick={() => setOpen((o) => !o)}><Icon name="folder" />{repo || 'Repository'}</span>
+      <button type="button" className="pill" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}><Icon name="folder" />{repo || 'Repository'}</button>
       {open && (
         <div className="menu repo-menu" role="menu">
           <input autoFocus placeholder="Search repos…" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -79,7 +79,7 @@ export function BranchPicker({ repo, branch, onPick }: { repo: string; branch: s
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
-      <span className="pill" onClick={() => setOpen((o) => !o)}><Icon name="branch" />{branch || 'Branch'}</span>
+      <button type="button" className="pill" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}><Icon name="branch" />{branch || 'Branch'}</button>
       {open && (
         <div className="menu repo-menu" role="menu">
           {err && <div className="mh">{err}</div>}
