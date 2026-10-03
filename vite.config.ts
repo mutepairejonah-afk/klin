@@ -23,11 +23,12 @@ export default defineConfig({
   server: {
     port: 5173,
     // Local sandbox development: the frontend keeps using /api while Vite
-    // forwards those requests to the Klin backend on port 3000. Production
+    // forwards requests to the backend's default port (8787). Override with
+    // KILN_API_PROXY_TARGET when the backend runs elsewhere. Production
     // deployments still use VITE_API_BASE directly.
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.KILN_API_PROXY_TARGET || 'http://localhost:8787',
         changeOrigin: true,
       },
     },
