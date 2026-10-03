@@ -4,7 +4,6 @@ import { TOOL_ICON, TOOL_LABEL } from '@/lib/toolMeta';
 import type { SessionEvent, ArtifactKind } from '@/lib/types';
 
 const TABS: { key: string; label: string; icon: string }[] = [
-  { key: 'terminal', label: 'Terminal', icon: 'terminal' },
   { key: 'editor', label: 'Editor', icon: 'code' },
   { key: 'browser', label: 'Browser', icon: 'globe' },
   { key: 'preview', label: 'Preview', icon: 'monitor' },

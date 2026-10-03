@@ -328,7 +328,7 @@ textarea::placeholder { color: var(--text-3); }
 .thumb-live pre { margin: 0; padding: 5px 6px; width: 200%; height: 200%; transform: scale(.5); transform-origin: 0 0; font: 8px/1.35 "JetBrains Mono", monospace; color: var(--text-2); text-align: left; white-space: pre; overflow: hidden; pointer-events: none; }
 .disclaimer { text-align: center; color: var(--text-3); font-size: 13px; margin-top: 8px; }
 
-.comp-col { flex: 1 1 56%; min-width: 0; padding: 14px 16px 16px 0; display: flex; flex-direction: column; }
+.comp-col { flex: 1 1 56%; min-width: 0; padding: 12px 14px 14px 0; display: flex; flex-direction: column; }
 .comp { flex: 1; min-height: 0; display: flex; flex-direction: column; background: color-mix(in srgb, var(--card) 94%, #0d1016); border: 1px solid color-mix(in srgb, var(--card-line) 88%, #fff); border-radius: 18px; overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,.18); }
 .comp-h { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; background: color-mix(in srgb, var(--card) 92%, #080a0e); border-bottom: 1px solid var(--line); }
 .comp-h .ttl { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; letter-spacing: -.1px; }
@@ -390,7 +390,8 @@ textarea::placeholder { color: var(--text-3); }
 .browser-nav { color: var(--text-3); font-size: 20px; letter-spacing: 3px; white-space: nowrap; }
 .urlbar .u { flex: 1; height: 29px; border-radius: 8px; background: var(--active); border: 1px solid var(--card-line); display: flex; align-items: center; padding: 0 10px; gap: 8px; color: var(--text-2); font-size: 12px; overflow: hidden; white-space: nowrap; }
 .urlbar .u svg { width: 13px; height: 13px; color: var(--green); }
-.preview-view iframe { min-height: 0; }
+.preview-view { background: #0c1720; }
+.preview-view iframe { min-height: 0; margin: 0 10px 10px; width: calc(100% - 20px); border-radius: 0 0 10px 10px; box-shadow: 0 10px 24px rgba(0,0,0,.22); }
 .viewport { flex: 1; overflow: auto; }
 .tbl-schema { display: grid; grid-template-columns: repeat(auto-fill,minmax(230px,1fr)); gap: 12px; padding: 14px; }
 .tbl-schema .card > b { display: flex; gap: 8px; align-items: center; padding: 9px 12px; background: var(--active); font-family: "JetBrains Mono", monospace; font-size: 13px; font-weight: 500; }

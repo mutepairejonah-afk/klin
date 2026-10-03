@@ -21,7 +21,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const toast = useToast((s) => s.show);
   const [meta, setMeta] = useState<Session | null>(null);
   const [metaError, setMetaError] = useState(false);
-  const [tab, setTab] = useState('terminal');
+  const [tab, setTab] = useState('preview');
   const [follow, setFollow] = useState(true);
   const [showCompMobile, setShowCompMobile] = useState(false);
   const [message, setMessage] = useState('');
@@ -181,12 +181,14 @@ function ShareLinkForm({ sessionId, onClose }: { sessionId: string; onClose: () 
 }
 
 const TOOL_TAB: Record<string, string> = {
-  terminal: 'terminal', editor: 'editor', browser: 'browser', preview: 'preview', db: 'db',
-  deploy: 'preview', git: 'terminal', github: 'terminal', tests: 'terminal',
+  // Terminal output remains in the session timeline, while the product
+  // surface stays focused on the artifact and preview pane.
+  terminal: 'preview', editor: 'editor', browser: 'browser', preview: 'preview', db: 'db',
+  deploy: 'preview', git: 'preview', github: 'preview', tests: 'preview',
 };
 
 function lastToolTab(state: FoldedState): string | null {
   const lastAct = [...state.thread].reverse().find((t) => t.kind === 'act');
   if (!lastAct || lastAct.kind !== 'act') return null;
-  return TOOL_TAB[lastAct.tool] ?? 'terminal';
+  return TOOL_TAB[lastAct.tool] ?? 'preview';
 }
