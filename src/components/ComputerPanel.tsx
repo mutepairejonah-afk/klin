@@ -32,7 +32,9 @@ export function ComputerPanel({
   return (
     <>
       <div className="comp-h">
-        <span className="ttl"><Icon name="monitor" />Agent’s computer</span>
+        <span className="window-dots" aria-hidden="true"><i /><i /><i /></span>
+        <span className="ttl"><Icon name="monitor" />Agent workspace</span>
+        <span className="comp-status"><i />{status === 'done' ? 'Complete' : status === 'failed' ? 'Stopped' : 'Live'}</span>
         <span style={{ flex: 1 }} />
         {onMinimize && (
           <button className="icon-btn hide-sm" aria-label={minimized ? 'Restore' : 'Minimize'} onClick={onMinimize}>
@@ -54,10 +56,17 @@ export function ComputerPanel({
         ))}
       </div>
       {activeTab === 'terminal' && (
-        <div className="cbody"><div className="term">
-          {state.term.length === 0 && <span className="muted">Terminal is idle.</span>}
-          {state.term.map((l, i) => <div key={i} className={l.stream === 'stderr' ? 'stderr' : 'out'}>{l.text}</div>)}
-        </div></div>
+        <div className="terminal-view">
+          <div className="terminal-toolbar">
+            <span className="terminal-title"><Icon name="terminal" />Terminal</span>
+            <span className="terminal-cwd mono">/workspace</span>
+            <span className="terminal-live"><i />{state.term.length ? `${state.term.length} lines` : 'Ready'}</span>
+          </div>
+          <div className="cbody"><div className="term">
+            {state.term.length === 0 && <div className="term-empty"><span className="prompt">$</span><span className="muted">Waiting for the agent to run a command…</span><span className="cursor" /></div>}
+            {state.term.map((l, i) => <div key={i} className={`term-line ${l.stream === 'stderr' ? 'stderr' : 'out'}`}><span className="line-no">{String(i + 1).padStart(2, '0')}</span><span className="line-content">{l.text}</span></div>)}
+          </div></div>
+        </div>
       )}
       {activeTab === 'editor' && (
         state.currentFile ? (
@@ -85,8 +94,10 @@ export function ComputerPanel({
       )}
       {activeTab === 'preview' && (
         state.previewUrl ? (
-          <div className="browser">
+          <div className="browser preview-view">
             <div className="urlbar">
+              <span className="preview-label"><Icon name="monitor" />Preview</span>
+              <span className="browser-nav" aria-hidden="true">‹ ›</span>
               <span className="u"><Icon name="lock" />{state.previewUrl}</span>
               <a className="icon-btn" aria-label="Open in new tab" href={withScheme(state.previewUrl)} target="_blank" rel="noopener noreferrer"><Icon name="ext" /></a>
             </div>
