@@ -11,10 +11,11 @@ export default defineConfig({
     target: 'es2020',
     rollupOptions: {
       output: {
-        // Stable vendor chunks cache across deploys; app code stays small.
+        // Keep React and Clerk in one chunk: separating them creates a
+        // circular ESM dependency (Clerk -> React -> Clerk) that can leave
+        // React undefined during Clerk's initialization in production.
         manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom', 'zustand'],
-          clerk: ['@clerk/clerk-react'],
+          vendor: ['react', 'react-dom', 'react-router-dom', 'zustand', '@clerk/clerk-react'],
         },
       },
     },
