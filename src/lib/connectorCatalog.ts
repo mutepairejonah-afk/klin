@@ -4,7 +4,7 @@
 export interface ConnectorMeta { id: string; name: string; description: string; scopes: string[]; }
 
 export const CONNECTOR_CATALOG: ConnectorMeta[] = [
-  { id: 'github', name: 'GitHub', description: 'Clone repos, open PRs, read issues.', scopes: ['repo', 'pull_requests', 'issues'] },
+  { id: 'github', name: 'GitHub', description: 'Clone private repos, push feature branches, and open approved pull requests.', scopes: ['repo', 'pull_requests', 'issues'] },
   { id: 'neon', name: 'Neon', description: 'Create database branches and run dry-runs.', scopes: ['branches', 'read schema', 'execute SQL'] },
   { id: 'supabase', name: 'Supabase', description: 'Inspect schemas and apply migrations.', scopes: ['read schema', 'execute SQL'] },
   { id: 'vercel', name: 'Vercel', description: 'Deploy frontend previews.', scopes: ['deployments'] },

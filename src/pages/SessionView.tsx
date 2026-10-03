@@ -33,6 +33,9 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [compMode, setCompMode] = useState<'normal' | 'min' | 'full'>('normal');
   const [openPreviewId, setOpenPreviewId] = useState<string | null>(null);
+  const [stopping, setStopping] = useState(false);
+  const threadScrollRef = useRef<HTMLDivElement>(null);
+  const followThreadRef = useRef(true);
   const seenPreviews = useRef<Set<string>>(new Set());
 
   const { visibleEvents, state, cursor, setCursor, maxCursor, approve, sendMessage } =
@@ -41,9 +44,12 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   useEffect(() => {
     sessionsApi.get(id).then(setMeta).catch(() => setMetaError(true));
     connectionsApi.list().then(setConnectors).catch(() => setConnectors([]));
+    setStopping(false);
+    followThreadRef.current = true;
   }, [id]);
 
   const status = meta ? statusFromFold(state, meta.status) : 'planning';
+  const canStop = mode === 'live' && ['queued', 'planning', 'executing', 'waiting_approval', 'verifying', 'paused'].includes(status);
   const displayState = selectedFile && state.files[selectedFile] ? { ...state, currentFile: selectedFile } : state;
   const activeTab = follow ? lastToolTab(state) ?? tab : tab;
   // Only show the "Agent's computer" panel once the agent actually used a real
@@ -63,6 +69,11 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const hasComp = hasTools || previews.length > 0;
   const previewOpen = !!openPreviewId;
 
+  useEffect(() => {
+    const el = threadScrollRef.current;
+    if (el && followThreadRef.current) el.scrollTo({ top: el.scrollHeight, behavior: 'auto' });
+  }, [visibleEvents]);
+
   function togglePreview(id: string) {
     setOpenPreviewId((cur) => (cur === id ? null : id));
     setShowCompMobile(true);
@@ -74,12 +85,25 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   }
   async function send() {
     const text = message.trim();
-    if (!text || sending || mode !== 'live') return;
+    if (!text || sending || state.followupActive) return;
+    followThreadRef.current = true;
     setSending(true);
     const accepted = await sendMessage(text);
     if (accepted) setMessage('');
     else toast('Message was not sent. Check the session and try again.');
     setSending(false);
+  }
+
+  async function stopRun() {
+    if (stopping) return;
+    setStopping(true);
+    try {
+      await sessionsApi.cancel(id);
+      toast('Stopping the run…');
+    } catch {
+      setStopping(false);
+      toast('Could not stop this run. Please try again.');
+    }
   }
 
   if (metaError) {
@@ -118,7 +142,10 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
 
       <section className="thread-col">
         {hasTools && <RoleBar state={state} status={status} />}
-        <div className="thr-scroll">
+        <div className="thr-scroll" ref={threadScrollRef} onScroll={(event) => {
+          const el = event.currentTarget;
+          followThreadRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+        }}>
           <ThreadPanel goal={meta.goal} state={state} status={status} onTab={(t) => { setOpenPreviewId(null); selectTab(t); }} onApprove={approve}
             previews={previews} openPreviewId={openPreviewId} onTogglePreview={togglePreview} />
         </div>
@@ -140,7 +167,11 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
                   </div>
                   <div className="r">
                     <button className="mic" aria-label="Voice" onClick={() => toast('Voice input')}><Icon name="mic" /></button>
-                    <button type="button" className="send" aria-label="Send" disabled={sending || state.followupActive || !message.trim()} onClick={() => void send()}><Icon name="up" /></button>
+                    {canStop ? (
+                      <button type="button" className="send" data-stop aria-label={stopping ? 'Stopping run' : 'Stop run'} title={stopping ? 'Stopping…' : 'Stop this run'} disabled={stopping} onClick={() => void stopRun()}><Icon name="stop" /></button>
+                    ) : (
+                      <button type="button" className="send" aria-label="Send" disabled={sending || state.followupActive || !message.trim()} onClick={() => void send()}><Icon name="up" /></button>
+                    )}
                   </div>
                 </div>
               </div>
