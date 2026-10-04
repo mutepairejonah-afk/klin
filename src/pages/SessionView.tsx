@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { RoleBar, ThreadPanel } from '@/components/ThreadPanel';
@@ -19,11 +19,14 @@ import type { Session, Connector } from '@/lib/types';
 
 export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const { id = '' } = useParams();
+  const location = useLocation();
+  const navigationSession = (location.state as { initialSession?: Session } | null)?.initialSession;
   const nav = useNavigate();
   const toast = useToast((s) => s.show);
-  const [meta, setMeta] = useState<Session | null>(null);
+  const [loadedMeta, setLoadedMeta] = useState<Session | null>(null);
+  const meta = loadedMeta?.id === id ? loadedMeta : navigationSession?.id === id ? navigationSession : null;
   const [metaError, setMetaError] = useState(false);
-  const [tab, setTab] = useState('preview');
+  const [tab, setTab] = useState('editor');
   const [follow, setFollow] = useState(true);
   const [showCompMobile, setShowCompMobile] = useState(false);
   const [message, setMessage] = useState('');
@@ -36,17 +39,25 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const [stopping, setStopping] = useState(false);
   const threadScrollRef = useRef<HTMLDivElement>(null);
   const followThreadRef = useRef(true);
-  const seenPreviews = useRef<Set<string>>(new Set());
 
   const { visibleEvents, state, cursor, setCursor, maxCursor, approve, sendMessage } =
     useSessionEvents(id, { mode });
 
   useEffect(() => {
-    sessionsApi.get(id).then(setMeta).catch(() => setMetaError(true));
-    connectionsApi.list().then(setConnectors).catch(() => setConnectors([]));
+    let active = true;
+    const initial = navigationSession?.id === id ? navigationSession : null;
+    setLoadedMeta(initial);
+    setMetaError(false);
+    sessionsApi.get(id).then((session) => {
+      if (active) setLoadedMeta(session);
+    }).catch(() => {
+      if (active && !initial) setMetaError(true);
+    });
+    connectionsApi.list().then((items) => { if (active) setConnectors(items); }).catch(() => { if (active) setConnectors([]); });
     setStopping(false);
     followThreadRef.current = true;
-  }, [id]);
+    return () => { active = false; };
+  }, [id, navigationSession]);
 
   const status = meta ? statusFromFold(state, meta.status) : 'planning';
   const canStop = mode === 'live' && ['queued', 'planning', 'executing', 'waiting_approval', 'verifying', 'paused'].includes(status);
@@ -56,12 +67,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   // tool (search, terminal, editor, ...) — a plain chat/research answer that
   // only ever "thinks" (tool: 'model') has nothing to show there.
   const previews = useMemo(() => derivePreviews(state), [state]);
-  // Like Claude: a newly created preview opens itself once; the user can hide it.
-  useEffect(() => {
-    const fresh = previews.find((p) => !seenPreviews.current.has(p.id));
-    previews.forEach((p) => seenPreviews.current.add(p.id));
-    if (fresh) { setOpenPreviewId(fresh.id); setShowCompMobile(true); }
-  }, [previews]);
+  // Keep app previews opt-in so they do not take over the code-review view.
   useEffect(() => {
     if (openPreviewId && !previews.some((p) => p.id === openPreviewId)) setOpenPreviewId(null);
   }, [previews, openPreviewId]);
@@ -108,7 +114,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
     }
   }
 
-  if (metaError) {
+  if (metaError && !meta) {
     return (
       <div className="wrap">
         <div className="card empty"><div className="ico-sq"><Icon name="agent" /></div><b>Session not found</b>
@@ -244,10 +250,9 @@ function ShareLinkForm({ sessionId, onClose }: { sessionId: string; onClose: () 
 }
 
 const TOOL_TAB: Record<string, string> = {
-  // Terminal output remains in the session timeline, while the product
-  // surface stays focused on the artifact and preview pane.
-  terminal: 'preview', editor: 'editor', browser: 'browser', preview: 'preview', db: 'db',
-  deploy: 'preview', git: 'preview', github: 'preview', tests: 'preview',
+  // Coding activity stays focused on code review; the app preview is opt-in.
+  terminal: 'editor', editor: 'editor', browser: 'browser', preview: 'preview', db: 'db',
+  deploy: 'editor', git: 'editor', github: 'editor', tests: 'editor',
 };
 
 function lastToolTab(state: FoldedState): string | null {

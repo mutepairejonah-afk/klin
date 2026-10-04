@@ -71,7 +71,7 @@ export default function AiAgent() {
       if (agent) persona = { slug: agent.slug, name: agent.name, systemPrompt: await loadPrompt(agent.slug) };
       const session = await sessionsApi.create({ goal, jobId: selectedJobId, repo, branch, connectors: selectedConnectors, agent: persona });
       setDraft(''); setSelectedJobId(null); setSelectedAgent(null);
-      nav(`/s/${session.id}`);
+      nav(`/s/${session.id}`, { state: { initialSession: session } });
     } catch {
       toast('Request failed — check your connection or permissions');
     } finally {
