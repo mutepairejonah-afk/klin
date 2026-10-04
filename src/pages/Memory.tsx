@@ -80,7 +80,7 @@ export default function Memory() {
             </div>
             {loading && <RowItemsSkeleton rows={2} />}
             {!loading && (repoIndex.length === 0
-              ? <div className="muted" style={{ fontSize: 14 }}>No repositories indexed yet. Connect GitHub to start.</div>
+              ? <div className="muted" style={{ fontSize: 14 }}>Repository indexing is not configured on this server yet. Connecting GitHub alone will not start an index.</div>
               : repoIndex.map((r) => (
                 <div className="row-item" style={{ padding: '10px 0' }} key={r.repo}>
                   <div className="txt"><b className="mono" style={{ fontWeight: 500, fontSize: 13.5 }}>{r.repo}</b><small>{r.files} files · {r.symbols} symbols · indexed {r.indexedAt}</small></div>
