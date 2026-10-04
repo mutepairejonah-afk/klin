@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { ConnectorPicker } from '@/components/ConnectorPicker';
+import { JobPicker } from '@/components/JobPicker';
 import { RepoPicker, BranchPicker } from '@/components/RepoPicker';
 import { JOB_TEMPLATES, jobById } from '@/lib/jobs';
 import { useUiStore } from '@/lib/store';
@@ -57,6 +58,12 @@ export default function AiAgent() {
   function pickJob(id: string) {
     setSelectedJobId(id);
     setDraft('');
+    setSlashOpen(false);
+    taRef.current?.focus();
+  }
+
+  function selectJobFromPicker(id: string) {
+    setSelectedJobId(id);
     setSlashOpen(false);
     taRef.current?.focus();
   }
@@ -129,6 +136,7 @@ export default function AiAgent() {
           <div className="bar">
             <div className="l">
               <button className="circle" aria-label="Attach a ZIP or files" onClick={() => toast('Attach ZIP or files')}><Icon name="plus" /></button>
+              <JobPicker up selectedId={selectedJobId} onSelect={(selected) => selectJobFromPicker(selected.id)} />
               <ConnectorPicker connectors={connectors} />
               {selectedConnectors.includes('github') && (
                 <>

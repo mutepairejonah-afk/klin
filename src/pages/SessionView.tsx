@@ -8,6 +8,7 @@ import { ComputerPanel } from '@/components/ComputerPanel';
 import { DesignPreview } from '@/components/DesignPreview';
 import { derivePreviews } from '@/lib/previews';
 import { ConnectorPicker } from '@/components/ConnectorPicker';
+import { JobPicker } from '@/components/JobPicker';
 import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { useSessionEvents } from '@/hooks/useSessionEvents';
@@ -15,12 +16,19 @@ import { sessionsApi, connectionsApi } from '@/lib/api';
 import { SessionViewSkeleton } from '@/components/Skeleton';
 import { statusFromFold, type FoldedState } from '@/lib/sessionReducer';
 import { fmtDuration } from '@/lib/format';
-import type { Session, Connector } from '@/lib/types';
+import type { Session, Connector, JobTemplate } from '@/lib/types';
+import { useUiStore } from '@/lib/store';
 
 export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const { id = '' } = useParams();
   const nav = useNavigate();
   const toast = useToast((s) => s.show);
+  const setDraft = useUiStore((s) => s.setDraft);
+  const setSelectedJobId = useUiStore((s) => s.setSelectedJobId);
+  const setSelectedAgent = useUiStore((s) => s.setSelectedAgent);
+  const setSelectedConnectors = useUiStore((s) => s.setSelectedConnectors);
+  const setRepo = useUiStore((s) => s.setRepo);
+  const setBranch = useUiStore((s) => s.setBranch);
   const [meta, setMeta] = useState<Session | null>(null);
   const [metaError, setMetaError] = useState(false);
   const [tab, setTab] = useState('preview');
@@ -106,6 +114,28 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
     }
   }
 
+  function openJobInAgent(job: JobTemplate) {
+    prepareAgentContext(job);
+    toast('Workflow ready in Agent. This sandbox run remains available in Sessions.');
+    nav('/agent');
+  }
+
+  function openAgentJobs() {
+    prepareAgentContext();
+    nav('/agent');
+  }
+
+  function prepareAgentContext(job?: JobTemplate) {
+    const connectors = [...(meta?.connectors ?? [])];
+    if (meta?.repo && !connectors.includes('github')) connectors.push('github');
+    setDraft('');
+    setSelectedJobId(job?.id ?? meta?.jobId ?? null);
+    setSelectedAgent(null);
+    setSelectedConnectors(connectors);
+    setRepo(meta?.repo ?? '');
+    setBranch(meta?.branch ?? '');
+  }
+
   if (metaError) {
     return (
       <div className="wrap">
@@ -163,6 +193,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
                 <div className="bar">
                   <div className="l">
                     <button className="circle" aria-label="Attach" onClick={() => toast('Attach files')}><Icon name="plus" /></button>
+                    <JobPicker up selectedId={meta.jobId} onSelect={openJobInAgent} />
                     <ConnectorPicker connectors={connectors} up />
                   </div>
                   <div className="r">
@@ -198,6 +229,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
             onSelectFile={(p) => { setSelectedFile(p); setTab('editor'); setFollow(false); }}
             expanded={compMode === 'full'} onExpand={() => setCompMode((m) => (m === 'full' ? 'normal' : 'full'))}
             minimized={compMode === 'min'} onMinimize={() => setCompMode((m) => (m === 'min' ? 'normal' : 'min'))}
+            onOpenJobs={openAgentJobs}
           />
           )}
           {mode === 'replay' && !previewOpen && (

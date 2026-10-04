@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { ConnectorPicker } from '@/components/ConnectorPicker';
+import { JobPicker } from '@/components/JobPicker';
 import { RepoPicker, BranchPicker } from '@/components/RepoPicker';
 import { useUiStore } from '@/lib/store';
 import { jobById } from '@/lib/jobs';
@@ -67,6 +68,7 @@ export default function Home() {
           <div className="bar">
             <div className="l">
               <button className="circle" aria-label="Attach a ZIP or files" onClick={() => toast('Attach ZIP or files')}><Icon name="plus" /></button>
+              <JobPicker up selectedId={selectedJobId} onSelect={(selected) => setSelectedJobId(selected.id)} />
               <ConnectorPicker connectors={connectors} />
               {selectedConnectors.includes('github') && (
                 <>
