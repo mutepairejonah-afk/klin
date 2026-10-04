@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from './Toast';
 import { useClerk } from '@clerk/clerk-react';
 import { SidebarSessionsSkeleton } from './Skeleton';
+import { SearchPalette } from './SearchPalette';
 
 const NAV_WORK = [
   { to: '/', label: 'New Chat', icon: 'edit', end: true },
@@ -29,6 +30,7 @@ export default function Sidebar() {
   const { signOut } = useClerk();
   const waiting = sessions.filter((s) => s.status === 'waiting_approval').length;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const nav = useNavigate();
   const toast = useToast((s) => s.show);
@@ -40,6 +42,17 @@ export default function Sidebar() {
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [menuOpen]);
+
+  useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    document.addEventListener('keydown', onShortcut);
+    return () => document.removeEventListener('keydown', onShortcut);
+  }, []);
 
   return (
     <>
@@ -53,7 +66,7 @@ export default function Sidebar() {
             <span>{BRAND.name}<span style={{ color: 'var(--blue)' }}>.</span></span>
           </NavLink>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button className="icon-btn" aria-label="Search" onClick={() => toast('Search — ⌘K')}><Icon name="search" /></button>
+            <button className="icon-btn" aria-label="Search" aria-keyshortcuts="Control+K Meta+K" title="Search (Ctrl/⌘K)" onClick={() => setSearchOpen(true)}><Icon name="search" /></button>
             <button className="icon-btn" aria-label="Collapse sidebar" onClick={toggleSidebar}><Icon name="panel" /></button>
           </div>
         </div>
@@ -113,6 +126,7 @@ export default function Sidebar() {
           )}
         </div>
       </aside>
+      {searchOpen && <SearchPalette sessions={sessions} onClose={() => setSearchOpen(false)} />}
     </>
   );
 }
