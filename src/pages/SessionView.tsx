@@ -65,7 +65,9 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   useEffect(() => {
     if (openPreviewId && !previews.some((p) => p.id === openPreviewId)) setOpenPreviewId(null);
   }, [previews, openPreviewId]);
-  const hasTools = visibleEvents.some((e) => e.type === 'action.started' && (e as any).payload?.tool && (e as any).payload.tool !== 'model');
+  const latestUserMessage = visibleEvents.reduce((last, event, index) => event.type === 'message.user' ? index : last, -1);
+  const currentTurnEvents = visibleEvents.slice(latestUserMessage + 1);
+  const hasTools = currentTurnEvents.some((event) => event.type === 'action.started' && event.payload.tool !== 'model');
   const hasComp = hasTools || previews.length > 0;
   const previewOpen = !!openPreviewId;
 
@@ -152,7 +154,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
         {mode === 'live' && (
           <div className="dock">
             <div className="dock-col">
-              <PlanCard state={state} status={status} onOpenComputer={openComputer} />
+              {hasTools && <PlanCard state={state} status={status} onOpenComputer={openComputer} />}
               <div className="composer steer slim">
                 <textarea
                   rows={1} placeholder="Message Kiln"
