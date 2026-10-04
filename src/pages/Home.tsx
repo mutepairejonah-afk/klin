@@ -36,7 +36,7 @@ export default function Home() {
     try {
       const session = await sessionsApi.create({ goal, jobId: selectedJobId, repo, branch, connectors: selectedConnectors });
       setDraft(''); setSelectedJobId(null);
-      nav(`/s/${session.id}`);
+      nav(`/s/${session.id}`, { state: { initialSession: session } });
     } catch {
       toast('Request failed — check your connection or permissions');
     } finally {

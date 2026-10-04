@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Icon from './Icon';
 import type { FoldedState } from '@/lib/sessionReducer';
+import { TOOL_LABEL } from '@/lib/toolMeta';
 
 const MARK = (
   <span className="mk live">
@@ -17,7 +18,14 @@ export function PlanCard({
   state, status, onOpenComputer,
 }: { state: FoldedState; status: string; onOpenComputer: () => void }) {
   const [open, setOpen] = useState(false);
-  const cur = state.activeIndex >= 0 ? state.todos[state.activeIndex]?.label : 'All steps complete';
+  const lastAction = [...state.thread].reverse().find((item) => item.kind === 'act');
+  const cur = state.activeIndex >= 0
+    ? state.todos[state.activeIndex]?.label
+    : state.todos.length > 0
+      ? 'All steps complete'
+      : lastAction?.kind === 'act'
+        ? `${TOOL_LABEL[lastAction.tool]} · ${lastAction.target}`
+        : status === 'planning' ? 'Preparing your task' : 'Starting your task';
 
   const thumbText = state.currentFile && state.files[state.currentFile]
     ? state.files[state.currentFile].content
@@ -51,7 +59,7 @@ export function PlanCard({
         )}
         <button className="plan-h" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           {head}
-          <span className="n">{state.todos.filter((t) => t.done).length} / {state.todos.length}</span>
+          {state.todos.length > 0 && <span className="n">{state.todos.filter((t) => t.done).length} / {state.todos.length}</span>}
           <span className="chev"><Icon name="chev" /></span>
         </button>
       </div>
