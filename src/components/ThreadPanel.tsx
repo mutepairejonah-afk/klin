@@ -110,7 +110,13 @@ export function ThreadPanel({
   previews?: PreviewItem[]; openPreviewId?: string | null; onTogglePreview?: (id: string) => void;
 }) {
   const pr = state.artifacts.find((a) => a.kind === 'pr');
-  const showThinking = (status === 'executing' || status === 'planning') && state.thread[state.thread.length - 1]?.kind !== 'act';
+  // A plain model reply is not tool work: don't expose a tool-thinking shimmer.
+  // Keep it for active coding sessions once a real tool has been used.
+  const latestUserTurn = state.thread.reduce((last, item, index) => item.kind === 'user' ? index : last, -1);
+  const hasRealToolActivity = state.thread.slice(latestUserTurn + 1).some((item) => item.kind === 'act');
+  const showThinking = hasRealToolActivity
+    && (status === 'executing' || status === 'planning')
+    && state.thread[state.thread.length - 1]?.kind !== 'act';
   return (
     <div className="thr">
       <div className="umsg"><div className="bubble">{goal}</div></div>
