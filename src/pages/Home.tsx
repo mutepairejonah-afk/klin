@@ -3,6 +3,8 @@ import { useRef, useState } from 'react';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { ConnectorPicker } from '@/components/ConnectorPicker';
+import { AttachmentChips, promptWithAttachments, PromptAttachments, type PromptAttachment } from '@/components/PromptAttachments';
+import { VoiceInputButton } from '@/components/VoiceInputButton';
 import { RepoPicker, BranchPicker } from '@/components/RepoPicker';
 import { useUiStore } from '@/lib/store';
 import { jobById } from '@/lib/jobs';
@@ -19,6 +21,7 @@ export default function Home() {
   const { draft, setDraft, selectedJobId, setSelectedJobId, selectedConnectors, repo, branch, setRepo, setBranch } = useUiStore();
   const { sessions, loading } = useSessions();
   const [connectors, setConnectors] = useState<Connector[]>([]);
+  const [attachments, setAttachments] = useState<PromptAttachment[]>([]);
   const [starting, setStarting] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
@@ -29,13 +32,13 @@ export default function Home() {
   const recent = sessions.slice(0, 4);
 
   async function start() {
-    const goal = draft.trim();
+    const goal = promptWithAttachments(draft.trim(), attachments);
     if (starting) return;
-    if (!goal) { toast('Describe the job first'); return; }
+    if (!draft.trim() && attachments.length === 0) { toast('Describe the job first or attach text/code context'); return; }
     setStarting(true);
     try {
       const session = await sessionsApi.create({ goal, jobId: selectedJobId, repo, branch, connectors: selectedConnectors });
-      setDraft(''); setSelectedJobId(null);
+      setDraft(''); setSelectedJobId(null); setAttachments([]);
       nav(`/s/${session.id}`);
     } catch {
       toast('Request failed — check your connection or permissions');
@@ -56,6 +59,7 @@ export default function Home() {
         </div>
 
         <div className="composer">
+          <AttachmentChips value={attachments} onChange={setAttachments} />
           <textarea
             ref={taRef}
             rows={2}
@@ -66,7 +70,7 @@ export default function Home() {
           />
           <div className="bar">
             <div className="l">
-              <button className="circle" aria-label="Attach a ZIP or files" onClick={() => toast('Attach ZIP or files')}><Icon name="plus" /></button>
+              <PromptAttachments value={attachments} onChange={setAttachments} disabled={starting} />
               <ConnectorPicker connectors={connectors} />
               {selectedConnectors.includes('github') && (
                 <>
@@ -86,8 +90,8 @@ export default function Home() {
               )}
             </div>
             <div className="r">
-              <button className="mic" aria-label="Voice input" onClick={() => toast('Voice input')}><Icon name="mic" /></button>
-              <button className="send" aria-label={starting ? 'Starting task' : 'Start task'} disabled={starting || !draft.trim()} onClick={start}>{starting ? <span className="spin" /> : <Icon name="up" />}</button>
+              <VoiceInputButton disabled={starting} onTranscript={(text) => setDraft(`${draft}${draft && !/\s$/.test(draft) ? ' ' : ''}${text}`)} />
+              <button className="send" aria-label={starting ? 'Starting task' : 'Start task'} disabled={starting || (!draft.trim() && attachments.length === 0)} onClick={start}>{starting ? <span className="spin" /> : <Icon name="up" />}</button>
             </div>
           </div>
         </div>

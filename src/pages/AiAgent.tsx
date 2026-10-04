@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { ConnectorPicker } from '@/components/ConnectorPicker';
+import { AttachmentChips, promptWithAttachments, PromptAttachments, type PromptAttachment } from '@/components/PromptAttachments';
+import { VoiceInputButton } from '@/components/VoiceInputButton';
 import { RepoPicker, BranchPicker } from '@/components/RepoPicker';
 import { JOB_TEMPLATES, jobById } from '@/lib/jobs';
 import { useUiStore } from '@/lib/store';
@@ -17,6 +19,7 @@ export default function AiAgent() {
   const { draft, setDraft, selectedJobId, setSelectedJobId, selectedConnectors, repo, branch, setRepo, setBranch, selectedAgent, setSelectedAgent } = useUiStore();
   const [specialists, setSpecialists] = useState<Specialist[]>([]);
   const [connectors, setConnectors] = useState<Connector[]>([]);
+  const [attachments, setAttachments] = useState<PromptAttachment[]>([]);
   const [starting, setStarting] = useState(false);
   const [slashOpen, setSlashOpen] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -62,15 +65,16 @@ export default function AiAgent() {
   }
 
   async function send() {
-    const goal = draft.trim();
+    const baseGoal = draft.trim() === '/' ? '' : draft.trim();
+    const goal = promptWithAttachments(baseGoal, attachments);
     if (starting) return;
-    if (!goal || goal === '/') { toast('Describe what you want the agent to do'); return; }
+    if (!baseGoal && attachments.length === 0) { toast('Describe what you want the agent to do or attach text/code context'); return; }
     setStarting(true);
     try {
       let persona: { slug: string; name: string; systemPrompt: string } | undefined;
       if (agent) persona = { slug: agent.slug, name: agent.name, systemPrompt: await loadPrompt(agent.slug) };
       const session = await sessionsApi.create({ goal, jobId: selectedJobId, repo, branch, connectors: selectedConnectors, agent: persona });
-      setDraft(''); setSelectedJobId(null); setSelectedAgent(null);
+      setDraft(''); setSelectedJobId(null); setSelectedAgent(null); setAttachments([]);
       nav(`/s/${session.id}`);
     } catch {
       toast('Request failed — check your connection or permissions');
@@ -91,6 +95,7 @@ export default function AiAgent() {
         </div>
 
         <div className="composer" ref={wrapRef}>
+          <AttachmentChips value={attachments} onChange={setAttachments} />
           {slashOpen && (
             <div className="menu up slash-menu" role="menu" style={{ position: 'absolute', left: 14, right: 14 }}>
               <div className="mh">Job types</div>
@@ -128,7 +133,7 @@ export default function AiAgent() {
           />
           <div className="bar">
             <div className="l">
-              <button className="circle" aria-label="Attach a ZIP or files" onClick={() => toast('Attach ZIP or files')}><Icon name="plus" /></button>
+              <PromptAttachments value={attachments} onChange={setAttachments} disabled={starting} />
               <ConnectorPicker connectors={connectors} />
               {selectedConnectors.includes('github') && (
                 <>
@@ -154,8 +159,8 @@ export default function AiAgent() {
               )}
             </div>
             <div className="r">
-              <button className="mic" aria-label="Voice input" onClick={() => toast('Voice input')}><Icon name="mic" /></button>
-              <button className="send" aria-label={starting ? 'Starting task' : 'Start task'} disabled={starting || !draft.trim()} onClick={send}>{starting ? <span className="spin" /> : <Icon name="up" />}</button>
+              <VoiceInputButton disabled={starting} onTranscript={(text) => setDraft(`${draft}${draft && !/\s$/.test(draft) ? ' ' : ''}${text}`)} />
+              <button className="send" aria-label={starting ? 'Starting task' : 'Start task'} disabled={starting || (!draft.trim() && attachments.length === 0)} onClick={send}>{starting ? <span className="spin" /> : <Icon name="up" />}</button>
             </div>
           </div>
         </div>

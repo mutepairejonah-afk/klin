@@ -8,6 +8,8 @@ import { ComputerPanel } from '@/components/ComputerPanel';
 import { DesignPreview } from '@/components/DesignPreview';
 import { derivePreviews } from '@/lib/previews';
 import { ConnectorPicker } from '@/components/ConnectorPicker';
+import { AttachmentChips, promptWithAttachments, PromptAttachments, type PromptAttachment } from '@/components/PromptAttachments';
+import { VoiceInputButton } from '@/components/VoiceInputButton';
 import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/Toast';
 import { useSessionEvents } from '@/hooks/useSessionEvents';
@@ -27,6 +29,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   const [follow, setFollow] = useState(true);
   const [showCompMobile, setShowCompMobile] = useState(false);
   const [message, setMessage] = useState('');
+  const [attachments, setAttachments] = useState<PromptAttachment[]>([]);
   const [sending, setSending] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [connectors, setConnectors] = useState<Connector[]>([]);
@@ -85,13 +88,18 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
   }
   async function send() {
     const text = message.trim();
-    if (!text || sending || state.followupActive) return;
+    if ((!text && attachments.length === 0) || sending || state.followupActive) return;
     followThreadRef.current = true;
     setSending(true);
-    const accepted = await sendMessage(text);
-    if (accepted) setMessage('');
-    else toast('Message was not sent. Check the session and try again.');
-    setSending(false);
+    try {
+      const accepted = await sendMessage(promptWithAttachments(text, attachments));
+      if (accepted) { setMessage(''); setAttachments([]); }
+      else toast('Message was not sent. Check the session and try again.');
+    } catch {
+      toast('Message was not sent. Check the session and try again.');
+    } finally {
+      setSending(false);
+    }
   }
 
   async function stopRun() {
@@ -154,6 +162,7 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
             <div className="dock-col">
               <PlanCard state={state} status={status} onOpenComputer={openComputer} />
               <div className="composer steer slim">
+                <AttachmentChips value={attachments} onChange={setAttachments} />
                 <textarea
                   rows={1} placeholder="Message Kiln"
                   value={message} onChange={(e) => setMessage(e.target.value)}
@@ -162,15 +171,15 @@ export function SessionView({ mode }: { mode: 'live' | 'replay' }) {
                 />
                 <div className="bar">
                   <div className="l">
-                    <button className="circle" aria-label="Attach" onClick={() => toast('Attach files')}><Icon name="plus" /></button>
+                    <PromptAttachments value={attachments} onChange={setAttachments} disabled={sending || state.followupActive} />
                     <ConnectorPicker connectors={connectors} up />
                   </div>
                   <div className="r">
-                    <button className="mic" aria-label="Voice" onClick={() => toast('Voice input')}><Icon name="mic" /></button>
+                    <VoiceInputButton disabled={sending || state.followupActive} onTranscript={(text) => setMessage((current) => `${current}${current && !/\s$/.test(current) ? ' ' : ''}${text}`)} />
                     {canStop ? (
                       <button type="button" className="send" data-stop aria-label={stopping ? 'Stopping run' : 'Stop run'} title={stopping ? 'Stopping…' : 'Stop this run'} disabled={stopping} onClick={() => void stopRun()}><Icon name="stop" /></button>
                     ) : (
-                      <button type="button" className="send" aria-label="Send" disabled={sending || state.followupActive || !message.trim()} onClick={() => void send()}><Icon name="up" /></button>
+                      <button type="button" className="send" aria-label="Send" disabled={sending || state.followupActive || (!message.trim() && attachments.length === 0)} onClick={() => void send()}><Icon name="up" /></button>
                     )}
                   </div>
                 </div>
