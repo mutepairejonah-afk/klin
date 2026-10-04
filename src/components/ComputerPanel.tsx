@@ -16,11 +16,12 @@ const ARTIFACT_ICON: Record<ArtifactKind, string> = {
 };
 
 export function ComputerPanel({
-  state, status, activeTab, onTab, events, onSelectFile, expanded, onExpand, minimized, onMinimize,
+  state, status, activeTab, onTab, events, onSelectFile, expanded, onExpand, minimized, onMinimize, onOpenJobs,
 }: {
   state: FoldedState; status: string; activeTab: string; onTab: (t: string) => void;
   events: SessionEvent[]; onSelectFile: (path: string) => void;
   expanded?: boolean; onExpand?: () => void; minimized?: boolean; onMinimize?: () => void;
+  onOpenJobs?: () => void;
 }) {
   const now = status === 'done'
     ? <><Icon name="check" className="st-ok" /><span>Task completed</span></>
@@ -35,6 +36,7 @@ export function ComputerPanel({
         <span className="ttl"><Icon name="monitor" />Agent workspace</span>
         <span className={`comp-status ${status === 'failed' ? 'bad' : status === 'done' ? 'ok' : 'live'}`}><i />{status === 'done' ? 'Complete' : status === 'failed' ? 'Stopped' : 'Live'}</span>
         <span style={{ flex: 1 }} />
+        {onOpenJobs && <button className="btn sm comp-jobs" aria-label="Open job workflows in Agent" title="Open job workflows in Agent" onClick={onOpenJobs}><Icon name="list" /><span>Jobs</span></button>}
         {onMinimize && (
           <button className="icon-btn hide-sm" aria-label={minimized ? 'Restore' : 'Minimize'} onClick={onMinimize}>
             <Icon name={minimized ? 'chevron-down' : 'minus'} />

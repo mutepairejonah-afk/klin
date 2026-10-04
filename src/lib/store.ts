@@ -19,6 +19,7 @@ interface UiState {
   selectedAgent: string | null;
   setSelectedAgent: (slug: string | null) => void;
   selectedConnectors: string[];
+  setSelectedConnectors: (ids: string[]) => void;
   toggleConnector: (id: string) => void;
   removeConnector: (id: string) => void;
   repo: string;
@@ -44,6 +45,7 @@ export const useUiStore = create<UiState>()(
       selectedAgent: null,
       setSelectedAgent: (selectedAgent) => set({ selectedAgent }),
       selectedConnectors: [],
+      setSelectedConnectors: (selectedConnectors) => set({ selectedConnectors }),
       toggleConnector: (id) => {
         const cur = get().selectedConnectors;
         set({ selectedConnectors: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] });
