@@ -55,6 +55,8 @@ export default function AiAgent() {
   const filteredJobs = slashMatch ? JOB_TEMPLATES.filter((j) => j.name.toLowerCase().includes(query)) : [];
 
   const agent = specialists.find((a) => a.slug === selectedAgent) ?? null;
+  const connectedConnectorCount = connectors.filter((connector) => connector.connected).length;
+  const selectedTaskConnectors = connectors.filter((connector) => connector.connected && selectedConnectors.includes(connector.id));
   const filteredAgents = slashMatch
     ? specialists.filter((a) => `${a.name} ${a.description}`.toLowerCase().includes(query)).slice(0, query ? 12 : 8)
     : [];
@@ -151,6 +153,20 @@ export default function AiAgent() {
               ))}
             </div>
           )}
+          <div className="agent-integrations">
+            <div className="agent-integrations-copy">
+              <span className="agent-integrations-title"><Icon name="plug" />Apps for this task</span>
+              <span className="agent-integrations-help">
+                {connectorError ? 'Connector status unavailable' : connectorLoading ? 'Checking connected apps…' : connectedConnectorCount ? `${connectedConnectorCount} connected — choose what the agent can use` : 'Connect an app to give the agent access'}
+              </span>
+            </div>
+            <ConnectorPicker connectors={connectors} up showLabel />
+          </div>
+          {selectedTaskConnectors.length > 0 && (
+            <div className="agent-integrations-selected" aria-label="Integrations selected for this task">
+              {selectedTaskConnectors.map((connector) => <span className="agent-integration-chip" key={connector.id}><Icon name="check" />{connector.name}</span>)}
+            </div>
+          )}
           <textarea
             ref={taRef}
             rows={2}
@@ -170,7 +186,6 @@ export default function AiAgent() {
           <div className="bar">
             <div className="l">
               <button className="circle" aria-label="Attach a ZIP or files" onClick={() => toast('Attach ZIP or files')}><Icon name="plus" /></button>
-              <ConnectorPicker connectors={connectors} />
               {selectedConnectors.includes('github') && (
                 <>
                   <RepoPicker
