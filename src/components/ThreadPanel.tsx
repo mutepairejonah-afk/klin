@@ -3,6 +3,7 @@ import type { FoldedState, ThreadItem } from '@/lib/sessionReducer';
 import { TOOL_ICON } from '@/lib/toolMeta';
 import { fmtDuration } from '@/lib/format';
 import { ArtifactCard } from './DesignPreview';
+import { AssistantMarkdown } from './AssistantMarkdown';
 import type { PreviewItem } from '@/lib/previews';
 
 const ROLE_ORDER = ['planner', 'executor', 'critic', 'retriever'] as const;
@@ -44,7 +45,7 @@ function ThreadEntry({ item, onTab, onApprove }: {
   onApprove: (id: string, decision: 'approved' | 'rejected') => void;
 }) {
   if (item.kind === 'user') return <div className="umsg" style={{ marginTop: 8 }}><div className="bubble">{item.text}</div></div>;
-  if (item.kind === 'thought') return <p className="th">{item.text}</p>;
+  if (item.kind === 'thought') return <AssistantMarkdown text={item.text} />;
   if (item.kind === 'act') return (
     <button className="act" onClick={() => onTab(item.tool)}>
       <Icon name={TOOL_ICON[item.tool]} />
@@ -99,7 +100,7 @@ function ThreadEntry({ item, onTab, onApprove }: {
     );
   }
   // done
-  return <p className="th">{item.text}</p>;
+  return <AssistantMarkdown text={item.text} />;
 }
 
 export function ThreadPanel({
