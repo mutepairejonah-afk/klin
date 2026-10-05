@@ -18,12 +18,29 @@ export default function AiAgent() {
   const [specialists, setSpecialists] = useState<Specialist[]>([]);
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [starting, setStarting] = useState(false);
+  const [specialistError, setSpecialistError] = useState(false);
+  const [connectorError, setConnectorError] = useState(false);
+  const [specialistLoading, setSpecialistLoading] = useState(true);
+  const [connectorLoading, setConnectorLoading] = useState(true);
   const [slashOpen, setSlashOpen] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { loadSpecialists().then((c) => setSpecialists(c.agents)).catch(() => setSpecialists([])); }, []);
-  useEffect(() => { connectionsApi.list().then(setConnectors).catch(() => setConnectors([])); }, []);
+  function refreshSpecialists() {
+    setSpecialistLoading(true);
+    loadSpecialists().then((catalog) => { setSpecialists(catalog.agents); setSpecialistError(false); })
+      .catch(() => setSpecialistError(true))
+      .finally(() => setSpecialistLoading(false));
+  }
+
+  function refreshConnectors() {
+    setConnectorLoading(true);
+    connectionsApi.list().then((items) => { setConnectors(items); setConnectorError(false); })
+      .catch(() => setConnectorError(true))
+      .finally(() => setConnectorLoading(false));
+  }
+
+  useEffect(() => { refreshSpecialists(); refreshConnectors(); }, []);
 
   useEffect(() => {
     if (!slashOpen) return;
@@ -65,10 +82,18 @@ export default function AiAgent() {
     const goal = draft.trim();
     if (starting) return;
     if (!goal || goal === '/') { toast('Describe what you want the agent to do'); return; }
+    if (connectorError && selectedConnectors.length) { toast('Refresh connector status before using an integration for this task.'); return; }
     setStarting(true);
     try {
       let persona: { slug: string; name: string; systemPrompt: string } | undefined;
-      if (agent) persona = { slug: agent.slug, name: agent.name, systemPrompt: await loadPrompt(agent.slug) };
+      if (agent) {
+        try {
+          persona = { slug: agent.slug, name: agent.name, systemPrompt: await loadPrompt(agent.slug) };
+        } catch {
+          toast(`Couldn’t load ${agent.name}'s specialist instructions. Retry or choose another specialist.`);
+          return;
+        }
+      }
       const session = await sessionsApi.create({ goal, jobId: selectedJobId, repo, branch, connectors: selectedConnectors, agent: persona });
       setDraft(''); setSelectedJobId(null); setSelectedAgent(null);
       nav(`/s/${session.id}`);
@@ -90,11 +115,27 @@ export default function AiAgent() {
           <p className="hero-sub">Type <span className="mono">/</span> for a job type or one of 279 specialists, or just describe the work.</p>
         </div>
 
+        {specialistError && (
+          <div className="connector-notice" role="alert">
+            <span className="notice-icon"><Icon name="alert" /></span>
+            <div><b>Specialist catalog unavailable</b><p>The default Agent still works; specialist choices need their catalog to load.</p></div>
+            <button type="button" className="btn sm" disabled={specialistLoading} onClick={refreshSpecialists}><Icon name="retry" /> Retry</button>
+          </div>
+        )}
+        {connectorError && (
+          <div className="connector-notice" role="alert">
+            <span className="notice-icon"><Icon name="alert" /></span>
+            <div><b>Connector status unavailable</b><p>This task will not have integration access until connection status can be loaded.</p></div>
+            <button type="button" className="btn sm" disabled={connectorLoading} onClick={refreshConnectors}><Icon name="retry" /> Retry</button>
+          </div>
+        )}
+
         <div className="composer" ref={wrapRef}>
           {slashOpen && (
             <div className="menu up slash-menu" role="menu" style={{ position: 'absolute', left: 14, right: 14 }}>
               <div className="mh">Job types</div>
-              {filteredJobs.length === 0 && filteredAgents.length === 0 && <div className="muted" style={{ padding: '9px 10px' }}>No match</div>}
+              {specialistLoading && <div className="muted" style={{ padding: '9px 10px' }}>Loading specialists…</div>}
+              {!specialistLoading && !specialistError && filteredJobs.length === 0 && filteredAgents.length === 0 && <div className="muted" style={{ padding: '9px 10px' }}>No match</div>}
               {filteredJobs.map((j) => (
                 <button key={j.id} role="menuitem" onClick={() => pickJob(j.id)}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Icon name={j.icon} />{j.name}</span>

@@ -572,7 +572,8 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .built-tools-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding: 5px 1px 19px; }
 .built-tools-intro h2 { margin: 0; font-size: 21px; letter-spacing: -.3px; }
 .built-tools-intro p { margin: 5px 0 0; color: var(--text-3); font-size: 13px; }
-.tools-ready-badge { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid color-mix(in srgb,var(--green) 28%,var(--card-line)); border-radius: 18px; color: var(--green); background: color-mix(in srgb,var(--green) 7%,transparent); font-size: 11px; white-space: nowrap; }
+.tools-ready-badge { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid var(--card-line); border-radius: 18px; color: var(--text-2); background: var(--card); font-size: 11px; white-space: nowrap; }
+.tools-ready-badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
 .tool-groups { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px; }
 .tool-group { overflow: hidden; border: 1px solid var(--card-line); border-radius: 15px; background: var(--card); }
 .tool-group-heading { display: flex; align-items: center; gap: 9px; padding: 13px 15px; border-bottom: 1px solid var(--line); }
@@ -585,7 +586,12 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .built-tool:last-child { border-bottom: 0; }
 .tool-ready-check { width: 19px; height: 19px; display: grid; place-items: center; flex: none; margin-top: 1px; border-radius: 50%; color: var(--green); background: color-mix(in srgb,var(--green) 11%,transparent); }
 .tool-ready-check svg { width: 12px; height: 12px; stroke-width: 2.4; }
+.tool-ready-check.tool-not-ready { color: var(--text-3); background: var(--active); }
 .built-tool > div { min-width: 0; }
+.built-tool-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.built-tool-title .tool-state-live,.built-tool-title .tool-state-dev { padding: 2px 6px; border-radius: 10px; font-size: 9px; font-weight: 600; }
+.built-tool-title .tool-state-live { color: var(--green); background: color-mix(in srgb,var(--green) 9%,transparent); }
+.built-tool-title .tool-state-dev { color: var(--text-3); background: var(--active); }
 .built-tool b { display: block; font-size: 12px; font-weight: 600; }
 .built-tool p { margin: 2px 0 5px; color: var(--text-3); font-size: 11.5px; }
 .built-tool code { display: block; overflow: hidden; color: var(--text-2); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }

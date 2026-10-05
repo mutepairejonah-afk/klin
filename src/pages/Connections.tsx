@@ -26,27 +26,29 @@ const TOOL_GROUPS = [
   {
     title: 'Workspace', icon: 'folder',
     tools: [
-      { name: 'Filesystem', detail: 'Read, search, and edit project files', commands: 'read_file · write_file · list_dir · apply_patch · search' },
-      { name: 'Terminal', detail: 'Run commands in the project workspace', commands: 'exec · timeout · working directory' },
-      { name: 'Git', detail: 'Inspect changes and manage branches', commands: 'clone · status · diff · branch · commit · push · PR' },
+      { name: 'Filesystem', detail: 'Read, search, and edit files inside the isolated workspace', commands: 'read · write · list · patch · search', available: true },
+      { name: 'Terminal', detail: 'Run bounded commands inside the isolated workspace', commands: 'exec · timeout · working directory', available: true },
+      { name: 'Git', detail: 'Clone repositories and inspect branches/diffs; publishing requires approval', commands: 'clone · status · diff · branch · commit · push · PR', available: true },
     ],
   },
   {
     title: 'Research & data', icon: 'globe',
     tools: [
-      { name: 'Browser', detail: 'Navigate pages and inspect web content', commands: 'navigate · click · type · screenshot · extract' },
-      { name: 'Database', detail: 'Inspect schemas and work with queries', commands: 'schema · dry run · execute · rollback' },
+      { name: 'Browser', detail: 'Browser navigation and interactive page control are not enabled yet', commands: 'In development', available: false },
+      { name: 'Database', detail: 'Database schema and query tools are not enabled yet', commands: 'In development', available: false },
     ],
   },
   {
     title: 'Ship with confidence', icon: 'rocket',
     tools: [
-      { name: 'Tests', detail: 'Run checks and read structured results', commands: 'run tests · parse results' },
-      { name: 'Deploy', detail: 'Preview deployments and inspect their health', commands: 'preview · logs · rollback' },
-      { name: 'Secrets', detail: 'Reference approved credentials by handle', commands: 'request secret · handle only' },
+      { name: 'Tests', detail: 'Detect and run the project test command in the isolated workspace', commands: 'detect · run · parse results', available: true },
+      { name: 'Deploy', detail: 'Preview deployments and deployment health checks are not enabled yet', commands: 'In development', available: false },
+      { name: 'Secrets', detail: 'Secret injection into task workspaces is not enabled yet', commands: 'In development', available: false },
     ],
   },
 ];
+const TOOL_COUNT = TOOL_GROUPS.flatMap((group) => group.tools);
+const AVAILABLE_TOOL_COUNT = TOOL_COUNT.filter((tool) => tool.available).length;
 
 function ConnectorMark({ id, name }: { id: string; name: string }) {
   return (
@@ -300,8 +302,8 @@ export default function Connections() {
         {tab === 'tools' && (
           <section className="built-tools-panel" role="tabpanel" aria-label="Built-in tools">
             <div className="built-tools-intro">
-              <div><span className="connector-eyebrow">Ready when you are</span><h2>Built-in tools</h2><p>Core capabilities Klin can use to plan, build, test, and ship your work.</p></div>
-              <span className="tools-ready-badge"><i /> Available in sessions</span>
+              <div><span className="connector-eyebrow">Live capability status</span><h2>Built-in tools</h2><p>Only tools marked available are enabled in isolated coding sessions.</p></div>
+              <span className="tools-ready-badge"><i />{AVAILABLE_TOOL_COUNT} available · {TOOL_COUNT.length - AVAILABLE_TOOL_COUNT} in development</span>
             </div>
             <div className="tool-groups">
               {TOOL_GROUPS.map((group) => (
@@ -310,15 +312,15 @@ export default function Connections() {
                   <div className="tool-list">
                     {group.tools.map((tool) => (
                       <article className="built-tool" key={tool.name}>
-                        <span className="tool-ready-check"><Icon name="check" /></span>
-                        <div><b>{tool.name}</b><p>{tool.detail}</p><code>{tool.commands}</code></div>
+                        <span className={`tool-ready-check ${tool.available ? '' : 'tool-not-ready'}`} aria-label={tool.available ? 'Available' : 'In development'}><Icon name={tool.available ? 'check' : 'clock'} /></span>
+                        <div><div className="built-tool-title"><b>{tool.name}</b><span className={tool.available ? 'tool-state-live' : 'tool-state-dev'}>{tool.available ? 'Available' : 'In development'}</span></div><p>{tool.detail}</p><code>{tool.commands}</code></div>
                       </article>
                     ))}
                   </div>
                 </div>
               ))}
             </div>
-            <div className="tools-footnote"><Icon name="info" /><p>External services such as GitHub and deployment providers must be connected separately in <button type="button" onClick={() => setParams({ tab: 'integrations' })}>Integrations</button>.</p></div>
+            <div className="tools-footnote"><Icon name="info" /><p>GitHub is the only live OAuth connector today; repository reads are available, while commits, pushes, and pull requests require approval. Browser, database, deployment, and workspace secret tools are not enabled yet. Manage provider access in <button type="button" onClick={() => setParams({ tab: 'integrations' })}>Integrations</button>.</p></div>
           </section>
         )}
       </div>
