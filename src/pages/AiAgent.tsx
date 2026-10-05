@@ -160,7 +160,7 @@ export default function AiAgent() {
                 {connectorError ? 'Connector status unavailable' : connectorLoading ? 'Checking connected apps…' : connectedConnectorCount ? `${connectedConnectorCount} connected — choose what the agent can use` : 'Connect an app to give the agent access'}
               </span>
             </div>
-            <ConnectorPicker connectors={connectors} showLabel />
+            <ConnectorPicker connectors={connectors} up showLabel />
           </div>
           {selectedTaskConnectors.length > 0 && (
             <div className="agent-integrations-selected" aria-label="Integrations selected for this task">
