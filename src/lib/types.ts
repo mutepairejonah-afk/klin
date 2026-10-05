@@ -118,7 +118,7 @@ export interface Connector {
   description: string;
   scopes: string[];
   connected: boolean;
-  oauth?: boolean; // true = real OAuth flow (see connectionsApi.githubOAuthUrl); false = stub connect
+  oauth?: boolean; // true = OAuth (GitHub); false = provider-token flow
   meta?: { login?: string; avatarUrl?: string } | string;
   lastUsedAt?: string;
 }
@@ -157,6 +157,8 @@ export interface Member {
   name: string;
   email: string;
   role: 'owner' | 'operator' | 'viewer';
+  status?: 'active' | 'pending';
+  createdAt?: string;
 }
 
 export interface UsageSummary {

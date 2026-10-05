@@ -4,7 +4,7 @@ import Icon from '@/components/Icon';
 import { HeaderLeft, HeaderRight } from '@/components/HeaderPortal';
 import { useToast } from '@/components/Toast';
 import { CONNECTOR_CATALOG } from '@/lib/connectorCatalog';
-import { connectionsApi } from '@/lib/api';
+import { ApiError, connectionsApi } from '@/lib/api';
 import { Skeleton } from '@/components/Skeleton';
 import type { Connector } from '@/lib/types';
 
@@ -30,9 +30,21 @@ export default function Connections() {
   const toast = useToast((s) => s.show);
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tokens, setTokens] = useState<Record<string, string>>({});
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  function explainError(error: unknown, fallback: string) {
+    if (error instanceof ApiError && error.status === 429) return `Too many requests. Try again in ${error.retryAfter ?? 15} seconds.`;
+    if (error instanceof ApiError && error.status === 401) return 'Your Clerk session expired. Sign in again.';
+    if (error instanceof ApiError && error.status === 403) return 'Only an organization operator can change connectors.';
+    if (error instanceof ApiError && error.message) return error.message;
+    return fallback;
+  }
 
   function refresh() {
-    connectionsApi.list().then(setConnectors).catch(() => setConnectors([])).finally(() => setLoading(false));
+    setLoading(true);
+    connectionsApi.list().then((items) => { setConnectors(items); setLoadError(null); }).catch((error) => { setConnectors([]); setLoadError(explainError(error, 'Could not load connectors.')); }).finally(() => setLoading(false));
   }
   useEffect(refresh, []);
 
@@ -42,7 +54,7 @@ export default function Connections() {
     const connected = params.get('connected');
     const err = params.get('error');
     if (connected) { toast(`Connected ${connected}`); refresh(); }
-    if (err) toast(err === 'github_not_configured' ? 'GitHub connector isn’t set up on the server yet' : 'Connection failed — try again');
+    if (err) toast(err === 'github_not_configured' ? 'GitHub OAuth is not configured on the server.' : `Connection failed: ${err.split('_').join(' ')}`);
     if (connected || err) { params.delete('connected'); params.delete('error'); setParams(params, { replace: true }); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -61,6 +73,7 @@ export default function Connections() {
 
         {tab === 'integrations' && (
           <div className="grid g2">
+            {loadError && <div className="card pad" style={{ gridColumn: '1 / -1' }}><div className="muted">{loadError}</div><button className="btn sm" onClick={refresh} style={{ marginTop: 10 }}>Retry</button></div>}
             {CONNECTOR_CATALOG.map((c) => {
               const live = byId.get(c.id);
               const connected = !!live?.connected;
@@ -81,23 +94,45 @@ export default function Connections() {
                         <div className="chips" style={{ marginTop: 8 }}>{c.scopes.map((s) => <span className="badge" key={s}>{s}</span>)}</div>
                       </>
                     )}
+                    {!connected && live && !live.oauth && (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        <input
+                          className="input"
+                          style={{ flex: 1, minWidth: 0 }}
+                          type="password"
+                          autoComplete="off"
+                          placeholder={`Paste ${c.name} token`}
+                          value={tokens[c.id] ?? ''}
+                          onChange={(e) => setTokens((current) => ({ ...current, [c.id]: e.target.value }))}
+                          aria-label={`${c.name} token`}
+                        />
+                        <button className="btn sm pri" disabled={connecting === c.id || !tokens[c.id]?.trim()} onClick={() => {
+                          setConnecting(c.id);
+                          connectionsApi.connect(c.id, tokens[c.id].trim()).then(() => {
+                            setTokens((current) => ({ ...current, [c.id]: '' }));
+                            toast(`Connected ${c.name}`);
+                            refresh();
+                          }).catch((error) => toast(explainError(error, `${c.name} credential validation failed.`))).finally(() => setConnecting(null));
+                        }}>{connecting === c.id ? 'Checking…' : 'Verify'}</button>
+                      </div>
+                    )}
                   </div>
-                  <button
+                  {(connected || !live || live.oauth) && <button
                     className={`btn sm ${connected ? '' : 'pri'}`}
                     disabled={loading}
                     onClick={() => {
-                      if (connected) { connectionsApi.disconnect(c.id).then(refresh).catch(() => toast('Backend not connected yet')); return; }
+                      if (connected) { connectionsApi.disconnect(c.id).then(refresh).catch((error) => toast(explainError(error, 'Could not disconnect this connector.'))); return; }
                       if (live?.oauth) {
                         connectionsApi.githubOAuthUrl()
                           .then(({ url }) => { window.location.href = url; })
-                          .catch(() => toast('GitHub connector isn’t set up on the server yet'));
+                          .catch((error) => toast(explainError(error, 'GitHub OAuth is not configured on the server.')));
                         return;
                       }
-                      connectionsApi.connect(c.id).then(refresh).catch(() => toast('Backend not connected yet'));
+                      connectionsApi.connect(c.id, '').then(refresh).catch((error) => toast(explainError(error, 'Enter a provider token first.')));
                     }}
                   >
                     {loading ? <Skeleton width={50} height={12} style={{ display: 'inline-block' }} /> : connected ? 'Manage' : 'Connect'}
-                  </button>
+                  </button>}
                 </div>
               );
             })}

@@ -33,7 +33,10 @@ export default function Settings() {
   useEffect(() => {
     settingsApi.get().then(setS).catch(() => setS(null));
     modelsApi.list().then(setModels).catch(() => setModels([]));
-    membersApi.list().then(setMembers).catch(() => setMembers([])).finally(() => setMembersLoading(false));
+    Promise.all([membersApi.list(), membersApi.invitations()])
+      .then(([active, pending]) => setMembers([...active, ...pending]))
+      .catch(() => setMembers([]))
+      .finally(() => setMembersLoading(false));
     refreshSecrets();
   }, []);
 
@@ -152,7 +155,7 @@ export default function Settings() {
         <div className="card" style={{ marginTop: 14 }}>
           <div style={{ padding: '18px 20px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3>Members</h3>
-            <button className="btn sm" onClick={() => { const email = prompt('Invite by email'); if (email) membersApi.invite(email, 'operator').then((m) => setMembers((ms) => [...ms, m])).catch(() => toast('Backend not connected yet')); }}>
+            <button className="btn sm" onClick={() => { const email = prompt('Invite by email'); if (email) membersApi.invite(email, 'operator').then((m) => setMembers((ms) => [m, ...ms])).catch((error) => toast(error?.message || 'Could not send invitation')); }}>
               <Icon name="plus" />Invite
             </button>
           </div>
@@ -161,12 +164,12 @@ export default function Settings() {
             ? <div className="muted" style={{ padding: '14px 20px' }}>No members yet.</div>
             : members.map((m) => (
               <div className="row-item" key={m.id}>
-                <span className="avatar" style={{ width: 32, height: 32 }}>{m.name[0]}</span>
+                <span className="avatar" style={{ width: 32, height: 32 }}>{m.name?.[0] ?? '?'}</span>
                 <div className="txt"><b style={{ fontWeight: 500 }}>{m.name}</b><small>{m.email}</small></div>
-                <select className="input" disabled={m.role === 'owner'} defaultValue={m.role}
+                {m.status === 'pending' ? <span className="badge">Invitation pending</span> : <select className="input" disabled={m.role === 'owner'} defaultValue={m.role}
                   onChange={(e) => membersApi.updateRole(m.id, e.target.value as Member['role']).catch(() => toast('Backend not connected yet'))}>
                   <option value="owner">Owner</option><option value="operator">Operator</option><option value="viewer">Viewer</option>
-                </select>
+                </select>}
               </div>
             )))}
         </div>

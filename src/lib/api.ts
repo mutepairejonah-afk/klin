@@ -10,8 +10,8 @@ import type {
 
 export const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
 
-class ApiError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+export class ApiError extends Error {
+  constructor(public status: number, message: string, public retryAfter?: number) { super(message); }
 }
 
 // Clerk (via ClerkProvider in main.tsx) attaches itself to window.Clerk once
@@ -36,7 +36,10 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new ApiError(res.status, body || res.statusText);
+    let message = body || res.statusText;
+    try { message = JSON.parse(body)?.error ?? message; } catch { /* keep plain response */ }
+    const retryAfter = Number(res.headers.get('Retry-After') ?? 0) || undefined;
+    throw new ApiError(res.status, message, retryAfter);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -74,26 +77,61 @@ export const sessionsApi = {
       method: 'POST', body: JSON.stringify({ public: isPublic }),
     }),
 
-  // Live event stream. Returns an unsubscribe function.
-  // Backend: GET /sessions/:id/events as text/event-stream, one JSON
-  // SessionEvent per `data:` line (see docs/BACKEND.md ยง Event Streaming).
+  // Live event stream. Uses fetch rather than EventSource because EventSource
+  // cannot send the Clerk Authorization header. The token is never put in a URL.
   subscribe(id: string, onEvent: (e: SessionEvent) => void, onError?: (e: Event) => void) {
-    let es: EventSource | undefined;
     let cancelled = false;
-    // Native EventSource can't send an Authorization header, so the token
-    // rides along as a query param for this one route (backend accepts
-    // either). Opening is async because getToken() is, but callers get an
-    // unsubscribe function synchronously either way.
-    clerkToken().then((token) => {
+    let controller: AbortController | undefined;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+    const connect = async () => {
+      const token = await clerkToken();
       if (cancelled) return;
-      const qs = token ? `?token=${encodeURIComponent(token)}` : '';
-      es = new EventSource(`${API_BASE}/sessions/${id}/events${qs}`, { withCredentials: true });
-      es.onmessage = (msg) => {
-        try { onEvent(JSON.parse(msg.data) as SessionEvent); } catch { /* ignore malformed frame */ }
-      };
-      if (onError) es.onerror = onError;
-    });
-    return () => { cancelled = true; es?.close(); };
+      if (!token) { onError?.(new Event('auth')); return; }
+      controller = new AbortController();
+      try {
+        const res = await fetch(`${API_BASE}/sessions/${id}/events`, {
+          credentials: 'include', signal: controller.signal,
+          headers: { Accept: 'text/event-stream', Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          onError?.(new Event(res.status === 429 ? 'rate-limit' : 'error'));
+          if (res.status === 401 || res.status === 403) return;
+          const retryMs = res.status === 429 ? Math.min(30_000, (Number(res.headers.get('Retry-After') ?? 5) || 5) * 1000) : Math.min(10_000, 500 * 2 ** attempts);
+          attempts += 1;
+          if (!cancelled && attempts <= 6) retryTimer = setTimeout(connect, retryMs);
+          return;
+        }
+        attempts = 0;
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error('Streaming is not supported by this browser');
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (!cancelled) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const frames = buffer.split('\n\n');
+          buffer = frames.pop() ?? '';
+          for (const frame of frames) {
+            const data = frame.split('\n').filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim()).join('\n');
+            if (data) { try { onEvent(JSON.parse(data) as SessionEvent); } catch { /* ignore malformed frame */ } }
+          }
+        }
+        if (!cancelled) {
+          attempts += 1;
+          retryTimer = setTimeout(connect, Math.min(10_000, 500 * 2 ** Math.min(attempts, 5)));
+        }
+      } catch (error) {
+        if (!cancelled && (error as Error).name !== 'AbortError') {
+          onError?.(new Event('error'));
+          attempts += 1;
+          if (attempts <= 6) retryTimer = setTimeout(connect, Math.min(10_000, 500 * 2 ** Math.min(attempts, 5)));
+        }
+      }
+    };
+    void connect();
+    return () => { cancelled = true; controller?.abort(); if (retryTimer) clearTimeout(retryTimer); };
   },
 };
 
@@ -111,8 +149,8 @@ export const shareApi = {
 // ---- Connections / secrets / tools ------------------------------------------
 export const connectionsApi = {
   list: () => http<Connector[]>('/connections'),
-  connect: (id: string, authCode?: string) =>
-    http<Connector>(`/connections/${id}/connect`, { method: 'POST', body: JSON.stringify({ authCode }) }),
+  connect: (id: string, token: string) =>
+    http<Connector>(`/connections/${id}/connect`, { method: 'POST', body: JSON.stringify({ token }) }),
   disconnect: (id: string) => http<void>(`/connections/${id}`, { method: 'DELETE' }),
   githubOAuthUrl: () => http<{ url: string }>('/connections/github/start'),
   githubRepos: () => http<{ fullName: string; private: boolean; defaultBranch: string; updatedAt: string }[]>('/connections/github/repos'),
@@ -166,6 +204,7 @@ export const settingsApi = {
 export const modelsApi = { list: () => http<ModelCatalogEntry[]>('/models') };
 export const membersApi = {
   list: () => http<Member[]>('/members'),
+  invitations: () => http<Member[]>('/members/invitations'),
   invite: (email: string, role: Member['role']) =>
     http<Member>('/members', { method: 'POST', body: JSON.stringify({ email, role }) }),
   updateRole: (id: string, role: Member['role']) =>
