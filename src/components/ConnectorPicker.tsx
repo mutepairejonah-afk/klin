@@ -13,7 +13,7 @@ function ConnLogo({ id, name }: { id: string; name: string }) {
   );
 }
 
-export function ConnectorPicker({ connectors, up }: { connectors: Connector[]; up?: boolean }) {
+export function ConnectorPicker({ connectors, up, showLabel = false }: { connectors: Connector[]; up?: boolean; showLabel?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const selectedConnectors = useUiStore((s) => s.selectedConnectors);
@@ -47,7 +47,7 @@ export function ConnectorPicker({ connectors, up }: { connectors: Connector[]; u
     <div className="dd connector-picker" ref={ref}>
       <button
         type="button"
-        className={selected.length ? 'conn-pill' : 'circle'}
+        className={selected.length || showLabel ? 'conn-pill' : 'circle'}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={selected.length ? `${selected.length} connector${selected.length === 1 ? '' : 's'} selected` : 'Choose connectors'}
@@ -57,6 +57,7 @@ export function ConnectorPicker({ connectors, up }: { connectors: Connector[]; u
         {selected.length
           ? <>{selected.slice(0, 3).map((connector) => <ConnLogo key={connector.id} id={connector.id} name={connector.name} />)}{selected.length > 3 && <span className="more">+{selected.length - 3}</span>}</>
           : <Icon name="plug" />}
+        {showLabel && <span className="conn-pill-label">{selected.length ? `${selected.length} selected` : 'Connect apps'}</span>}
       </button>
       {open && (
         <div className={`menu conn-menu ${up ? 'up' : ''}`} role="dialog" aria-label="Connectors for this task">

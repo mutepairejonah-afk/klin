@@ -230,6 +230,15 @@ textarea::placeholder { color: var(--text-3); }
 .conn-pill { display: flex; align-items: center; gap: 5px; height: 32px; padding: 0 9px; border-radius: 16px; border: 1px solid var(--card-line); color: var(--text); flex: none; }
 .conn-pill .cl { background: none; }
 .conn-pill .more { font-size: 12px; color: var(--text-3); }
+.conn-pill-label { padding-left: 2px; font-size: 12px; font-weight: 550; white-space: nowrap; }
+.agent-integrations { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 1px 2px 9px; margin: 0 0 8px; border-bottom: 1px solid var(--line); }
+.agent-integrations-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.agent-integrations-title { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 550; color: var(--text); }
+.agent-integrations-title svg { width: 15px; height: 15px; color: var(--accent); }
+.agent-integrations-help { color: var(--text-3); font-size: 11.5px; line-height: 1.35; }
+.agent-integrations-selected { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 0 2px 8px; }
+.agent-integration-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: 1px solid color-mix(in srgb,var(--green) 28%,var(--card-line)); border-radius: 10px; background: color-mix(in srgb,var(--green) 7%,transparent); color: var(--text-2); font-size: 11.5px; }
+.agent-integration-chip svg { width: 12px; height: 12px; color: var(--green); }
 .menu.conn-menu { width: 330px; padding: 8px; max-height: min(460px,62vh); overflow-y: auto; }
 .menu.slash-menu { width: auto; max-height: min(360px,50vh); overflow-y: auto; }
 .menu.repo-menu { width: 280px; padding: 6px; max-height: min(360px,50vh); overflow-y: auto; }
@@ -663,6 +672,8 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 @media (max-width:600px) {
   .connector-picker .menu.conn-menu { width: auto; }
   .connector-choice small { max-width: min(55vw,260px); }
+  .agent-integrations { align-items: flex-start; }
+  .agent-integrations-help { max-width: 55vw; }
 }
 
 .connection-state.state-unknown { border-style: dashed; color: var(--amber); }
